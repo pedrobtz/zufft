@@ -1,0 +1,10 @@
+Package: zufftconsumer
+Title: Test Consumer of the 'zufft' C Interface
+Version: 0.0.1
+Authors@R: person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre"))
+Description: A fixture for zufft's tests. Uses the registered C table
+    through 'LinkingTo', as 'zutsne' will.
+License: MIT
+Imports: zufft
+LinkingTo: zufft
+Encoding: UTF-8

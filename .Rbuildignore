@@ -12,3 +12,4 @@
 ^CRAN-SUBMISSION$
 ^src/.*\.o$
 ^src/.*\.(so|dll|dylib|a)$
+^tests/testthat/fixtures/.*/src/.*\.(o|so|dll)$
