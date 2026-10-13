@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         # portable: CRAN's flags (SSE2). native: the opt-in build of design
-        # §12.3, -march=native in the user's Makevars (AVX2 on the runner).
+        # §12.3, ZUFFT_CXXFLAGS=-march=native (AVX2 on the runner).
         build: [portable, native]
     runs-on: ubuntu-latest
     name: benchmarks (ubuntu-latest, ${{ matrix.build }})
@@ -40,9 +40,9 @@ jobs:
         env:
           BUILD: ${{ matrix.build }}
         run: |
+          # The README's native build: ZUFFT_CXXFLAGS reaches only zufft.
           if [ "$BUILD" = native ]; then
-            mkdir -p ~/.R
-            echo 'CXX17FLAGS += -march=native' >> ~/.R/Makevars
+            export ZUFFT_CXXFLAGS=-march=native
           fi
           R CMD INSTALL .
           Rscript -e 'str(zufft::zufft_info()[c("simd_backend", "simd_width", "fma")])' 

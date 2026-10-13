@@ -10,7 +10,10 @@ CXX_STD = CXX17
 # where std::thread needs it (WRE §1.2.1 allows it in PKG_CPPFLAGS).
 PKG_CPPFLAGS = -I. -I../inst/include -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
 
-# Hidden symbols, the way R's own Makeconf spells them.
-PKG_CXXFLAGS = $(CXX_VISIBILITY)
+# Hidden symbols, the way R's own Makeconf spells them. ZUFFT_CXXFLAGS is
+# an opt-in hook for a native build: make reads it from the environment
+# (for example ZUFFT_CXXFLAGS=-march=native), and it is empty unless the
+# user sets it, so CRAN builds and R CMD check see only $(CXX_VISIBILITY).
+PKG_CXXFLAGS = $(CXX_VISIBILITY) $(ZUFFT_CXXFLAGS)
 PKG_CFLAGS = $(C_VISIBILITY)
 PKG_LIBS = -pthread
