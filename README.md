@@ -132,10 +132,9 @@ zufft against SciPy on 2040 cases.
 
 ## Speed
 
-You don’t need a native build for zufft to keep up with fftwtools. The
-table below compares the two on a Linux x86-64 runner, using one thread.
-fftwtools uses Ubuntu’s FFTW, which is built with SSE2 and AVX SIMD
-code. The numbers come from `bench/RESULTS.md`.
+You don’t need a native build for zufft to keep up with fftwtools. Here
+are a few cases on a Linux x86-64 runner, using one thread, against
+Ubuntu’s FFTW (built with SSE2 and AVX SIMD code):
 
 | Case | fftwtools | zufft, CRAN build | ratio | zufft native, ratio |
 |----|----|----|----|----|
@@ -146,26 +145,19 @@ code. The numbers come from `bench/RESULTS.md`.
 | 3-D complex 128³ | 44.80 ms | 34.10 ms | 0.76 | 0.83 |
 | 1-D complex 100 000 | 1.44 ms | 1.81 ms | 1.26 | 0.83 |
 
-A ratio below 1 means zufft is faster. With CRAN’s portable build
-(SSE2), zufft is faster on 30 of the 33 benchmark cases. It’s slower on
-three: single 1-D complex transforms of about 10^5 to 10^6 points.
-Unlike the columns of a matrix, a single transform can’t be split into
-independent 1-D transforms. The worst of these is 1.26 times slower.
-Built for the local CPU (AVX2 here, see [Native build](#native-build)),
-zufft is faster on all 33. Each ratio compares runs on the same machine,
-but the two builds ran on separate runners.
+A ratio below 1 means zufft is faster. CRAN’s portable build is faster
+on 30 of the 33 benchmark cases. The three exceptions are single 1-D
+complex transforms of about 10^5 to 10^6 points, at worst 1.26 times
+slower. A [native build](#native-build) is faster on all 33.
 
-Where does the speed come from? Most of it comes from planning. zufft
-caches its plans, while fftwtools creates a new FFTW plan (with
-`FFTW_ESTIMATE`) and destroys it on every call. Threads add more
-(`workers = 2`), which fftwtools doesn’t offer. And every length runs in
-O(n log n), even a prime one: a prime length of 100 003 takes
-milliseconds, compared with seconds for `stats::fft()`.
+Most of the speed comes from planning: zufft caches its plans, while
+fftwtools creates and destroys an FFTW plan on every call. Threads
+(`workers`) add more, which fftwtools doesn’t offer. And every length
+runs in O(n log n), even a prime one, unlike in `stats::fft()`.
 
-On Apple silicon the gap is wider. That’s partly because Homebrew’s FFTW
-has no SIMD code for double precision there: FFTW’s NEON support is
-single precision only. You’ll find those numbers in `bench/RESULTS.md`
-too.
+[`bench/RESULTS.md`](https://github.com/pedrobtz/zufft/blob/main/bench/RESULTS.md)
+has all 33 cases, how they were measured, and the numbers for macOS on
+Apple silicon.
 
 ## Native build
 
