@@ -17,14 +17,16 @@ cosine and sine transforms (DCTs and DSTs):
 | zufft | stats | fftwtools | Computes |
 |----|----|----|----|
 | `fft_c2c()` | `fft()`, `mvfft()` | `fftw()`, `fftw_c2c()`, `mvfftw_c2c()`, `fftw2d()`, `fftw3d()` | the discrete Fourier transform (DFT) |
-| `fft_r2c()` | — | `fftw_r2c()`, `mvfftw_r2c()`, `fftw_r2c_2d()`, `fftw_r2c_3d()` | the DFT of real input, non-negative frequency terms only |
-| `fft_c2r()` | — | `fftw_c2r()`, `mvfftw_c2r()` | the inverse of `fft_r2c()` |
+| `fft_r2c()` | — | `fftw_r2c()`, `mvfftw_r2c()`, `fftw_r2c_2d()`, `fftw_r2c_3d()`, with `HermConj = 0` | the DFT of real input, non-negative frequency terms only |
+| `fft_c2r()` | — | `fftw_c2r()`, `mvfftw_c2r()`, with `HermConj = 0` | the inverse of `fft_r2c()` |
 | `fft_dct()`, `fft_dst()` | — | — | DCTs and DSTs of types 1 to 4 |
-| `fft_stats()`, `mvfft_stats()` | `fft()`, `mvfft()` | — | drop-in replacements for stats |
+| `fft_stats()`, `mvfft_stats()` | `fft()`, `mvfft()` | — | the same as `fft()` and `mvfft()`, as drop-in replacements |
 
+One difference matters when you switch: zufft scales inverse transforms
+by `1/n`, as SciPy does, while stats and fftwtools don’t. Use
+`norm = "none"` to get their numbers.
 `vignette("migrating-from-fftwtools")` gives the exact arguments for
-each fftwtools function, such as `HermConj = 0` and the scaling of
-inverses.
+each fftwtools function.
 
 The conventions for axes, normalisation and the DCT and DST definitions
 follow `scipy.fft`. Helpers such as `fft_next_len()`, `fft_freq()` and
@@ -73,8 +75,8 @@ fft_c2r(X, n = length(x))
 ```
 
 Use `axes` to choose the dimensions to transform, and `workers` to
-spread the work over several threads. Here we transform each column of a
-matrix on two threads:
+spread the work over several threads (`fft_workers()` sets a default for
+the session). Here we transform each column of a matrix on two threads:
 
 ``` r
 m <- matrix(rnorm(4096 * 64), 4096)
@@ -87,8 +89,8 @@ R stores arrays in column-major order, so the first dimension is
 contiguous in memory. That’s why, with `axes = NULL`, the real
 transforms halve the first dimension (to `n %/% 2 + 1`): it’s fast, and
 it matches fftwtools. If you give `axes` explicitly, the last axis
-listed is halved instead, as in SciPy. The results are bit-identical
-whatever the number of threads.
+listed is halved instead, as in SciPy. With CRAN’s builds, the results
+are bit-identical whatever the number of threads.
 
 `fft_dct()` and `fft_dst()` compute DCTs and DSTs with SciPy’s
 definitions. The default is type 2, and the inverse takes you back to
@@ -125,10 +127,10 @@ Ubuntu’s FFTW (built with SSE2 and AVX SIMD code):
 | 3-D complex 128³ | 44.80 ms | 34.10 ms | 0.76 | 0.83 |
 | 1-D complex 100 000 | 1.44 ms | 1.81 ms | 1.26 | 0.83 |
 
-A ratio below 1 means zufft is faster. CRAN’s portable build is faster
-on 30 of the 33 benchmark cases. The three exceptions are single 1-D
-complex transforms of about 10^5 to 10^6 points, at worst 1.26 times
-slower. A [native build](#native-build) is faster on all 33.
+A ratio below 1 means zufft is faster. On one thread, CRAN’s portable
+build is faster on 30 of the 33 benchmark cases. The three exceptions
+are single 1-D complex transforms of about 10⁵ to 10⁶ points, at worst
+1.26 times slower. A [native build](#native-build) is faster on all 33.
 
 Most of the speed comes from planning: zufft caches its plans, while
 fftwtools creates and destroys an FFTW plan on every call. Threads
@@ -166,12 +168,12 @@ doubles, is 4 with AVX2, 8 with AVX-512, and 2 for a portable build:
 zufft::zufft_info()$simd_width
 ```
 
-How much does it help? On the Linux x86-64 runner of `bench/RESULTS.md`,
-where this gives AVX2, the 16384 × 64 complex column case drops from
-15.39 ms to 9.17 ms. A complex transform of prime length 10 007 drops
-from 659.6 µs to 389.5 µs.
+How much does it help? On the Linux x86-64 runners of
+`bench/RESULTS.md`, where this gives AVX2, the 16384 × 64 complex column
+case goes from 0.96 to 0.60 of fftwtools’ time. A complex transform of
+prime length 10 007 goes from 0.81 to 0.49.
 
-Other platforms don’t benefit:
+Other platforms gain little or nothing:
 
 - On Apple silicon the SIMD width stays at two doubles (NEON), so a
   native build gains little.
@@ -179,10 +181,10 @@ Other platforms don’t benefit:
 - Windows builds ignore `ZUFFT_CXXFLAGS` and stay portable, because code
   built for AVX by the GCC in Rtools crashed in our tests.
 
-Keep in mind that with GCC on a CPU with fused multiply-add (FMA),
-results can differ in the last bit between thread counts.
-`zufft::zufft_info()$fp_contract` reports `"fast"` when that applies.
-CRAN’s builds report `"off"`.
+Keep in mind that a native build with GCC, on a CPU with fused
+multiply-add (FMA), can give results that differ in the last bit between
+thread counts. `zufft::zufft_info()$fp_contract` reports `"fast"` when
+that applies. CRAN’s builds report `"off"`.
 
 ## Licence
 
