@@ -66,6 +66,18 @@ int zff_dst(const zff_layout *lin, const double *in, const zff_layout *lout,
             double *out, int naxes, const int *axes, int type, double fct,
             int ortho, int nthreads);
 
+/* Fast lengths (zff_lengths.cpp): the smallest length >= n, or the largest
+ * <= n, with factors 2, 3, 5, 7, 11 (complex) or 2, 3, 5 (real). For n >= 1
+ * and n <= 2^52; never throw. */
+size_t zff_good_size(size_t n, int real);
+size_t zff_prev_good_size(size_t n, int real);
+
+/* The session's default thread request, as fft_workers() stores it
+ * (zff_pool.cpp): a positive count or -k for all cores but k - 1. Read
+ * without R by the C table when a caller passes nthreads = 0. */
+void zff_set_default_workers(int n);
+int zff_default_workers(void);
+
 /* "zero-copy" or "marshal" (design §12.2). */
 const char *zff_complex_path(void);
 

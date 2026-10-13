@@ -4,6 +4,7 @@
  * work on the calling thread, so every transform is single-threaded. Stage 6
  * replaces it with the lazy pool the design specifies. */
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <functional>
 #include <thread>
@@ -55,3 +56,11 @@ extern "C" size_t zff_pool_size(void) {
 extern "C" size_t zff_hardware_threads(void) {
   return ducc0::detail_threading::available_hardware_threads();
 }
+
+namespace {
+std::atomic<int> default_workers{1};
+}
+
+extern "C" void zff_set_default_workers(int n) { default_workers.store(n); }
+
+extern "C" int zff_default_workers(void) { return default_workers.load(); }
