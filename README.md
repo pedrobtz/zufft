@@ -137,12 +137,12 @@ zufft::zufft_info()$simd_width   # 4 with AVX2, 8 with AVX-512; 2 is portable
 
 This works on Linux and macOS; installing from source needs a compiler
 (on macOS, the Xcode command line tools). Windows builds ignore
-`ZUFFT_CXXFLAGS` and stay portable: code built for AVX with Rtools’ GCC
-crashed in our tests. On the Linux x86-64 runner of `bench/RESULTS.md`,
-where this gives AVX2, the 16384 × 64 complex column case drops from
-15.39 ms to 9.17 ms and a complex prime length of 10 007 from 659.6 µs
-to 389.5 µs. On Apple silicon the vector width stays at two doubles, so
-a native build (`-mcpu=native` there) gains little.
+`ZUFFT_CXXFLAGS` and stay portable: code built for AVX by the GCC in
+Rtools crashed in our tests. On the Linux x86-64 runner of
+`bench/RESULTS.md`, where this gives AVX2, the 16384 × 64 complex column
+case drops from 15.39 ms to 9.17 ms and a complex prime length of 10 007
+from 659.6 µs to 389.5 µs. On Apple silicon the vector width stays at
+two doubles, so a native build (`-mcpu=native` there) gains little.
 
 Two things to know:
 
