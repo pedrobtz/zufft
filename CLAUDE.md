@@ -20,12 +20,11 @@ criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 4. `fft_c2c()`, `fft_r2c()`, `fft_c2r()`,
-`fft_dct()` and `fft_dst()` work over any axes with `n`, all four `norm`
-values and the condition classes of design §9; `zufft_info()` reports the
-build. Helpers,
-`fft_stats()`, the thread pool and the C table are later stages. `workers`
-is validated but every transform runs on one thread (placeholder pool).
+Verified 2026-10-13: Stage 5. The whole R surface of design §5.1 exists:
+the five transforms, the length, frequency and shift helpers, `fft_stats()`
+and `mvfft_stats()`, the `workers` accessors and `zufft_info()`. The thread
+pool (Stage 6) and the C table (Stage 7) are next; until the pool lands,
+every transform runs on one thread whatever `workers` says.
 Benchmarks against fftwtools are in `bench/RESULTS.md`.
 
 ## Stage tracking

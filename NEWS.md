@@ -9,6 +9,13 @@
 * `fft_dct()` and `fft_dst()` compute discrete cosine and sine transforms of
   types 1 to 4 and their inverses over any axes, with SciPy's definitions,
   `norm` and `orthogonalize`.
+* `fft_next_len()` and `fft_prev_len()` find fast transform lengths;
+  `fft_freq()`, `fft_rfreq()`, `fft_shift()` and `fft_ishift()` are SciPy's
+  frequency and shift helpers.
+* `fft_stats()` and `mvfft_stats()` are drop-in replacements for
+  `stats::fft()` and `stats::mvfft()`.
+* `fft_workers()`, `with_fft_workers()` and `local_fft_workers()` set the
+  default number of threads.
 * Bundles the BSD-licensed FFT subset of ducc0 (the files and commit SciPy
   vendors) and compiles it.
 * `zufft_info()` reports the vendored ducc0 and SciPy commits, the SIMD
