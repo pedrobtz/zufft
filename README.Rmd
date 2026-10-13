@@ -116,18 +116,37 @@ fast and matches fftwtools; give `axes` explicitly to halve the last one
 listed, as SciPy does. Results are bit-identical whatever the number of
 threads.
 
-**A native build** is the user's choice: CRAN's binaries use the portable
-SSE2 (x86-64) or NEON (arm64) vector width. To compile for your own CPU, add
-this line to `~/.R/Makevars` and reinstall from source:
+## Native build
 
-```make
-CXX17FLAGS += -march=native
+CRAN's binaries are compiled for any CPU of their architecture, so on x86-64
+they use SSE2, two doubles per vector. On a CPU with AVX2 or AVX-512 a build
+for your own machine runs faster. Set `ZUFFT_CXXFLAGS` before installing
+from source; zufft adds it to its compiler flags and nothing else:
+
+``` r
+Sys.setenv(ZUFFT_CXXFLAGS = "-march=native")
+install.packages("zufft", type = "source")
+# or the development version: pak::pak("pedrobtz/zufft")
+
+zufft::zufft_info()$simd_width   # 4 with AVX2, 8 with AVX-512; 2 is portable
 ```
 
-`zufft_info()$simd_width` then reports the width you got. On the Linux
-x86-64 runner of `bench/RESULTS.md`, where this gives AVX2, the
-16384 × 64 complex column case drops from 15.39 ms to 9.17 ms and a
-complex prime length of 10 007 from 659.6 µs to 389.5 µs.
+This works on Linux and macOS; installing from source needs a compiler
+(on macOS, the Xcode command line tools). Windows builds ignore
+`ZUFFT_CXXFLAGS` and stay portable: code built for AVX by the GCC in Rtools
+crashed in our tests. On the Linux x86-64 runner of
+`bench/RESULTS.md`, where this gives AVX2, the 16384 × 64 complex column
+case drops from 15.39 ms to 9.17 ms and a complex prime length of 10 007
+from 659.6 µs to 389.5 µs. On Apple silicon the vector width stays at two
+doubles, so a native build (`-mcpu=native` there) gains little.
+
+Two things to know:
+
+- The package then runs only on CPUs like yours: do not copy the installed
+  library to other machines.
+- With GCC on a CPU with fused multiply-add, results can differ in the last
+  bit between thread counts; `zufft::zufft_info()$fp_contract` reports
+  `"fast"` when that applies. CRAN's builds report `"off"`.
 
 ## Licence
 

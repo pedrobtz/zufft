@@ -75,6 +75,52 @@ jobs:
             Rscript -e 'library(zufft); set.seed(1); m <- matrix(rnorm(256 * 256), 256); want <- fft_c2c(m, axes = 1); t <- system.time(for (k in 1:500) stopifnot(identical(fft_c2c(m, axes = 1, workers = 4), want))); cat(sprintf("run %s: %.2f s, pool %d\n", commandArgs(TRUE)[1], t[["elapsed"]], zufft_info()$pool_size))' "$i"
           done
 
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            flags: -march=native
+            min_width: 4
+          - os: macos-latest
+            flags: -mcpu=native
+            min_width: 2
+    runs-on: ${{ matrix.os }}
+    name: native build via ZUFFT_CXXFLAGS (${{ matrix.os }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      # The README's opt-in native build: the flag must reach every C++
+      # compile, and the result must stay correct. Not on Windows, where
+      # Makevars.win has no hook (AVX code from Rtools' GCC crashed).
+      - name: install with ZUFFT_CXXFLAGS
+        shell: bash
+        env:
+          ZUFFT_CXXFLAGS: ${{ matrix.flags }}
+        run: |
+          R CMD INSTALL --preclean . 2>&1 | tee install.log
+          n=$(grep -c -- "$ZUFFT_CXXFLAGS" install.log || true)
+          echo "compile lines carrying $ZUFFT_CXXFLAGS: $n"
+          [ "$n" -ge 10 ] || { echo "::error::ZUFFT_CXXFLAGS did not reach the compiler"; exit 1; }
+      - name: wider vectors, correct results
+        shell: bash
+        env:
+          MIN_WIDTH: ${{ matrix.min_width }}
+        run: |
+          Rscript -e '
+            info <- zufft::zufft_info()
+            str(info[c("simd_backend", "simd_width", "fma", "fp_contract")])
+            stopifnot(info$simd_width >= as.integer(Sys.getenv("MIN_WIDTH")))
+            set.seed(1)
+            z <- complex(real = rnorm(1009), imaginary = rnorm(1009))
+            stopifnot(isTRUE(all.equal(zufft::fft_c2c(z), stats::fft(z))))
+            m <- matrix(rnorm(512 * 64), 512)
+            stopifnot(isTRUE(all.equal(zufft::fft_c2r(zufft::fft_r2c(m), n = dim(m)), m)))
+          '
+
   marshal:
     runs-on: ubuntu-latest
     name: complex marshal path

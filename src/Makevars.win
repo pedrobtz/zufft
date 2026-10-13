@@ -10,7 +10,11 @@ CXX_STD = CXX17
 # where std::thread needs it (WRE §1.2.1 allows it in PKG_CPPFLAGS).
 PKG_CPPFLAGS = -I. -I../inst/include -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
 
-# Hidden symbols, the way R's own Makeconf spells them.
+# Hidden symbols, the way R's own Makeconf spells them. Unlike src/Makevars
+# there is no ZUFFT_CXXFLAGS hook here: code built for AVX or AVX2 by
+# Rtools' MinGW-w64 GCC crashed in CI (exit 139), even with
+# -Wa,-muse-unaligned-vector-move against GCC bug 54412, so Windows builds
+# stay portable.
 PKG_CXXFLAGS = $(CXX_VISIBILITY)
 PKG_CFLAGS = $(C_VISIBILITY)
 PKG_LIBS = -pthread
