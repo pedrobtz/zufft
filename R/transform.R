@@ -9,14 +9,13 @@
 #' The conventions are those of `scipy.fft` (`fft`, `fftn`, `rfftn`,
 #' `irfftn`): `n` crops or zero-pads each transformed axis before the
 #' transform, and `norm` chooses where the scaling goes. They differ from
-#' SciPy in two ways: `axes` are 1-based, and `axes = NULL` means every
-#' dimension rather than the last one.
-#'
-#' Speed: R stores arrays column by column, so the first axis is the
-#' contiguous one, whereas in NumPy it is the last. The real transforms halve
-#' the last listed axis, as SciPy does; listing the first axis last, for
-#' example `fft_r2c(m, axes = 2:1)` for a matrix, halves the contiguous axis
-#' and is often much faster (about 1.8 times for a 2048 x 2048 matrix).
+#' SciPy in three ways: `axes` are 1-based; `axes = NULL` means every
+#' dimension rather than the last one; and with `axes = NULL` the real
+#' transforms halve the *first* dimension, not the last. R stores arrays
+#' column by column, so the first dimension is the contiguous one, and
+#' halving it is the fast choice (about 1.8 times faster than halving the
+#' last for a 2048 x 2048 matrix). It is also what fftwtools' 2-D and 3-D
+#' real transforms do.
 #'
 #' Coming from fftwtools: `fft_c2c(x)` is `fftw(x)` and `fftw_r2c(x)`,
 #' `fft_r2c(x)` is `fftw_r2c(x, HermConj = 0)`, and an fftwtools inverse is
@@ -28,16 +27,19 @@
 #'   input; `fft_c2r()` treats real input as complex.
 #' @param inverse `TRUE` for the inverse transform. `0` and `1` are accepted
 #'   too, as in fftwtools.
-#' @param n Transform lengths, one per transformed axis (no recycling).
-#'   Each axis of `x` is cropped or zero-padded to its length first. `NULL`
-#'   keeps the lengths of `x`. For `fft_c2r()`, `n` gives the lengths of the
-#'   real output; the last transformed axis of `x` must then hold
-#'   `n %/% 2 + 1` values and is cropped or padded to that. Its default is
-#'   `2 * (m - 1)` for an input extent `m`, which is always even: give `n`
-#'   to recover an odd length.
+#' @param n Transform lengths, one per transformed axis in the order of
+#'   `axes` (no recycling); with `axes = NULL`, one per dimension, in
+#'   dimension order. Each axis of `x` is cropped or zero-padded to its
+#'   length first. `NULL` keeps the lengths of `x`. For `fft_c2r()`, `n`
+#'   gives the lengths of the real output; the halved axis of `x` must then
+#'   hold `n %/% 2 + 1` values and is cropped or padded to that. Its default
+#'   is `2 * (m - 1)` for an input extent `m`, which is always even: give
+#'   `n` to recover an odd length.
 #' @param axes The dimensions to transform, 1-based, without repeats. `NULL`
-#'   means all of them, in order. For the real transforms the last listed
-#'   axis is the one that is halved. Use `axes = 1` for a column-wise
+#'   means all of them, in order; for `fft_r2c()` and `fft_c2r()` it means
+#'   all of them in reverse order, so the first dimension is halved. With
+#'   explicit `axes`, the real transforms halve the last axis listed, as
+#'   SciPy does: `axes = seq_along(dim(x))` halves the last dimension. Use `axes = 1` for a column-wise
 #'   transform of a matrix, as [stats::mvfft()] does.
 #' @param norm Where the scaling goes. `"backward"` (the default) leaves the
 #'   forward transform unscaled and divides the inverse by `N`, the product
@@ -73,7 +75,9 @@
 #' # columns of a matrix, and both axes
 #' m <- matrix(rnorm(12), 4, 3)
 #' fft_c2c(m, axes = 1)
-#' fft_r2c(m)
+#' dim(fft_r2c(m))                 # halves the first dimension: 3 x 3
+#' dim(fft_r2c(m, axes = 1:2))     # SciPy's choice, the last: 4 x 2
+#' fft_c2r(fft_r2c(m), n = dim(m)) # back to m
 fft_c2c <- function(
   x,
   inverse = FALSE,
@@ -128,8 +132,9 @@ fft_r2c <- function(
   }
   norm <- check_norm(norm, call)
   d <- array_dims(x)
-  axes <- check_axes(axes, length(d), call)
-  n <- check_n(n, length(axes), d[axes], call)
+  ax <- real_axes(axes, n, d, call)
+  axes <- ax$axes
+  n <- check_n(ax$n, length(axes), d[axes], call)
   check_lengths(n, 1, call)
   nthreads <- resolve_workers(workers, call)
   out <- .Call(
@@ -166,10 +171,11 @@ fft_c2r <- function(
   }
   norm <- check_norm(norm, call)
   d <- array_dims(x)
-  axes <- check_axes(axes, length(d), call)
+  ax <- real_axes(axes, n, d, call)
+  axes <- ax$axes
   default <- d[axes]
   default[length(default)] <- 2 * (default[length(default)] - 1)
-  n <- check_n(n, length(axes), default, call)
+  n <- check_n(ax$n, length(axes), default, call)
   check_lengths(n, 1, call)
   nthreads <- resolve_workers(workers, call)
   out <- .Call(
@@ -186,4 +192,19 @@ fft_c2r <- function(
   od <- d
   od[axes] <- n
   set_result_attributes(out, x, od, axes)
+}
+
+# Axes of the real transforms, which halve the last listed axis. `axes =
+# NULL` means every dimension in reverse order, so the first, contiguous in
+# R, is the one halved; `n` is then given in dimension order and reordered
+# to match.
+real_axes <- function(axes, n, d, call) {
+  if (!is.null(axes)) {
+    return(list(axes = check_axes(axes, length(d), call), n = n))
+  }
+  axes <- rev(seq_along(d))
+  if (!is.null(n)) {
+    n <- check_n(n, length(axes), NULL, call)[axes]
+  }
+  list(axes = axes, n = n)
 }

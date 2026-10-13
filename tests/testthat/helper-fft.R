@@ -145,15 +145,16 @@ expect_stats_equal <- function(actual, expected) {
   expect_fft_equal(as.vector(actual), as.vector(expected))
 }
 
-# Results with different thread counts: bit-identical on builds without
-# fused multiply-add (CRAN's x86-64 SSE2 builds); within the tolerance on
-# FMA hardware, where ducc0's SIMD batches of lines, whose boundaries depend
-# on the thread split, round differently from its scalar tail (design §10).
+# Results with different thread counts: bit-identical when the build never
+# contracts multiply-adds (zufft_info()$fp_contract == "off", every CRAN
+# build); within the tolerance otherwise, where ducc0's SIMD batches and its
+# scalar tail round differently and the batch boundaries follow the thread
+# split (design §10).
 expect_threads_equal <- function(actual, expected, N = length(expected)) {
-  if (isTRUE(zufft_info()$fma)) {
-    expect_fft_equal(actual, expected, N = N)
-  } else {
+  if (identical(zufft_info()$fp_contract, "off")) {
     expect_identical(actual, expected)
+  } else {
+    expect_fft_equal(actual, expected, N = N)
   }
 }
 

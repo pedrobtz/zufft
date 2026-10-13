@@ -15,6 +15,10 @@ A named list:
 \code{"none"}.}
 \item{\code{simd_width}}{Doubles per SIMD vector, \code{1} without SIMD.}
 \item{\code{fma}}{\code{TRUE} if the target has fused multiply-add.}
+\item{\code{fp_contract}}{\code{"off"} when the transforms never fuse
+multiply-adds, so results are bit-identical whatever \code{workers} is;
+\code{"fast"} for a GCC build targeting FMA hardware, where they can
+differ in the last bit. CRAN's builds are \code{"off"}.}
 \item{\code{threading}}{\code{"zufft"} when zufft supplies the thread pool,
 \code{"none"} when threads are compiled out.}
 \item{\code{pool_size}}{Threads the pool can use now, the caller

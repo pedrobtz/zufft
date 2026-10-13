@@ -39,17 +39,20 @@ input; \code{fft_c2r()} treats real input as complex.}
 \item{inverse}{\code{TRUE} for the inverse transform. \code{0} and \code{1} are accepted
 too, as in fftwtools.}
 
-\item{n}{Transform lengths, one per transformed axis (no recycling).
-Each axis of \code{x} is cropped or zero-padded to its length first. \code{NULL}
-keeps the lengths of \code{x}. For \code{fft_c2r()}, \code{n} gives the lengths of the
-real output; the last transformed axis of \code{x} must then hold
-\code{n \%/\% 2 + 1} values and is cropped or padded to that. Its default is
-\code{2 * (m - 1)} for an input extent \code{m}, which is always even: give \code{n}
-to recover an odd length.}
+\item{n}{Transform lengths, one per transformed axis in the order of
+\code{axes} (no recycling); with \code{axes = NULL}, one per dimension, in
+dimension order. Each axis of \code{x} is cropped or zero-padded to its
+length first. \code{NULL} keeps the lengths of \code{x}. For \code{fft_c2r()}, \code{n}
+gives the lengths of the real output; the halved axis of \code{x} must then
+hold \code{n \%/\% 2 + 1} values and is cropped or padded to that. Its default
+is \code{2 * (m - 1)} for an input extent \code{m}, which is always even: give
+\code{n} to recover an odd length.}
 
 \item{axes}{The dimensions to transform, 1-based, without repeats. \code{NULL}
-means all of them, in order. For the real transforms the last listed
-axis is the one that is halved. Use \code{axes = 1} for a column-wise
+means all of them, in order; for \code{fft_r2c()} and \code{fft_c2r()} it means
+all of them in reverse order, so the first dimension is halved. With
+explicit \code{axes}, the real transforms halve the last axis listed, as
+SciPy does: \code{axes = seq_along(dim(x))} halves the last dimension. Use \code{axes = 1} for a column-wise
 transform of a matrix, as \code{\link[stats:mvfft]{stats::mvfft()}} does.}
 
 \item{norm}{Where the scaling goes. \code{"backward"} (the default) leaves the
@@ -84,14 +87,13 @@ subset of the dimensions of an array, in O(n log n) time for every length.
 The conventions are those of \code{scipy.fft} (\code{fft}, \code{fftn}, \code{rfftn},
 \code{irfftn}): \code{n} crops or zero-pads each transformed axis before the
 transform, and \code{norm} chooses where the scaling goes. They differ from
-SciPy in two ways: \code{axes} are 1-based, and \code{axes = NULL} means every
-dimension rather than the last one.
-
-Speed: R stores arrays column by column, so the first axis is the
-contiguous one, whereas in NumPy it is the last. The real transforms halve
-the last listed axis, as SciPy does; listing the first axis last, for
-example \code{fft_r2c(m, axes = 2:1)} for a matrix, halves the contiguous axis
-and is often much faster (about 1.8 times for a 2048 x 2048 matrix).
+SciPy in three ways: \code{axes} are 1-based; \code{axes = NULL} means every
+dimension rather than the last one; and with \code{axes = NULL} the real
+transforms halve the \emph{first} dimension, not the last. R stores arrays
+column by column, so the first dimension is the contiguous one, and
+halving it is the fast choice (about 1.8 times faster than halving the
+last for a 2048 x 2048 matrix). It is also what fftwtools' 2-D and 3-D
+real transforms do.
 
 Coming from fftwtools: \code{fft_c2c(x)} is \code{fftw(x)} and \code{fftw_r2c(x)},
 \code{fft_r2c(x)} is \code{fftw_r2c(x, HermConj = 0)}, and an fftwtools inverse is
@@ -110,7 +112,9 @@ fft_c2c(fft_c2c(x), inverse = TRUE, norm = "none") / length(x)
 # columns of a matrix, and both axes
 m <- matrix(rnorm(12), 4, 3)
 fft_c2c(m, axes = 1)
-fft_r2c(m)
+dim(fft_r2c(m))                 # halves the first dimension: 3 x 3
+dim(fft_r2c(m, axes = 1:2))     # SciPy's choice, the last: 4 x 2
+fft_c2r(fft_r2c(m), n = dim(m)) # back to m
 }
 \seealso{
 \code{\link[stats:fft]{stats::fft()}} for R's own complex transform.

@@ -325,11 +325,14 @@ meant to be named. `fft_c2r(x, n)` puts the one argument an inverse real
 transform usually needs where fftwtools users look for it.
 
 **`axes = NULL`** means every dimension in ascending order (a plain vector
-has one), as `stats::fft()` does for arrays. Otherwise `axes` contains
+has one), as `stats::fft()` does for arrays; for the real transforms
+`fft_r2c()` and `fft_c2r()` it means every dimension in *descending*
+order, so the first dimension is the halved one (D17). Otherwise `axes` contains
 unique, 1-based, exactly representable whole numbers in
 `1..length(dim(x))`; an empty vector and duplicate axes are errors. Axis
 order is significant for real transforms: the last listed axis is the
-half-complex axis. Column-wise transforms, fftwtools' `mvfftw*` and R's
+half-complex axis, as in SciPy. With `axes = NULL`, `n` is still given in
+dimension order and reordered to match. Column-wise transforms, fftwtools' `mvfftw*` and R's
 `mvfft()`, are `axes = 1` on a matrix.
 
 **`n = NULL`** uses the input lengths. Otherwise `n` contains one positive,
@@ -371,7 +374,7 @@ fftwtools would run an inverse.
 | `mvfftw_r2c(x, HermConj = 0)` | `fft_r2c(x, axes = 1)` |
 | `mvfftw_c2r(X, HermConj = 0, n = n)` | `fft_c2r(X, n = n, axes = 1, norm = "none")` |
 | `fftw2d(x)`, `fftw_c2c_2d(x)`, `fftw3d(x)`, `fftw_c2c_xd(x)` | `fft_c2c(x)` |
-| `fftw_r2c_2d(x, HermConj = 0)`, `fftw_r2c_3d(x, HermConj = 0)` | `fft_r2c(x, axes = 2:1)`, `fft_r2c(x, axes = 3:1)` (FFTW is row-major, so fftwtools halves R's first axis; checked against fftwtools 0.9-11 in Stage 3) |
+| `fftw_r2c_2d(x, HermConj = 0)`, `fftw_r2c_3d(x, HermConj = 0)` | `fft_r2c(x)` (FFTW is row-major, so fftwtools halves R's first axis, as zufft's default does since D17; checked against fftwtools 0.9-11) |
 | `mvfftw(..., fftplanopt = 1)` | nothing to do: plans are cached |
 | (none) | `workers`, `norm`, `n` padding, `axes`, DCT/DST, helpers |
 
@@ -426,7 +429,8 @@ array moved between R and NumPy by `reticulate` keeps its shape, so axis
   conjugation, in C. This halves the work and is what makes
   `fft_c2c(<double>)` agree with `scipy.fft.fft(<float64>)` and with
   `fftw(<double>)`.
-- `fft_r2c()` halves the last axis listed in `axes` to `n %/% 2 + 1`;
+- `fft_r2c()` halves the last axis listed in `axes`, or the first
+  dimension when `axes = NULL` (D17), to `n %/% 2 + 1`;
   `fft_c2r()` takes that shape and restores `n`, by default
   `2 * (m - 1)` on that axis, as SciPy does; an odd original length must
   be given, as in fftwtools.
@@ -850,8 +854,14 @@ length below the minimum, or an output beyond R's vector limits),
   in speed (`fft_r2c()` 2048² 14.7 → 15.2 ms, `fft_c2c()` 2^20 11.7 →
   12.2 ms). The tests assert bit-identity on builds without FMA (CRAN's
   x86-64 SSE2 builds) and the §10 tolerance otherwise; repeated calls with
-  the same thread count are always bit-identical. Open question 10 asks
-  whether to give up contraction for thread-count independence. Other
+  the same thread count are always bit-identical. **Decided after Stage 10
+  (D18):** contraction is off, so results are bit-identical whatever the
+  thread count in every build that cannot contract (clang builds, which
+  includes CRAN's macOS arm64 binaries, and every target without FMA,
+  which includes CRAN's x86-64 builds). `zufft_info()$fp_contract`
+  reports it; the tests assert bit-identity when it is `"off"` and the
+  tolerance for a GCC build targeting FMA hardware, which R's `Makevars`
+  cannot stop from contracting. Other
   thread tests: concurrent C-table callers; repeated pool
   creation and package unload; and forked children before and after pool
   creation on every POSIX CI leg.
@@ -946,14 +956,12 @@ few thousand points.
 | `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× | met: 6.5× | met: 8.0× |
 | `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× | met: 651× | met: 624× |
 
-**The axis order matters in R.** The real transforms halve the last
-listed axis, as SciPy does, but in R's column-major arrays the contiguous
-axis is the first. `fft_r2c()` of a 2048 × 2048 matrix takes 26.5 ms with
-the default axes and 14.5 ms with `axes = 2:1` on the arm64 laptop, and
-two threads speed up the first by 1.49× and the second by 1.82×. The
-semantics stay SciPy's (D10); the reference page tells users to list the
-first axis last when they want speed, and open question 9 asks whether the
-default should change.
+**The axis order matters in R.** In R's column-major arrays the contiguous
+axis is the first. `fft_r2c()` of a 2048 × 2048 matrix took 26.5 ms
+halving the last axis and 14.5 ms halving the first on the arm64 laptop,
+and two threads sped up the first by 1.49× and the second by 1.82×. Since
+D17 the default halves the first dimension, so the fast case is the
+default; the 1.49× applies only when a caller lists the axes in order.
 
 The misses are reported, not relaxed. It is within the 1.5× bound that
 governs every grid point, it is a single 1-D complex transform on a shared
@@ -1142,7 +1150,12 @@ PKG_CFLAGS = $(C_VISIBILITY)
 PKG_LIBS = -pthread
 ```
 
-- **Kept from ducc0: fused multiply-add contraction**, the one flag that
+- **Contraction is now off (D18, after Stage 10).** The bullet below
+  records why it was kept through Stage 10; switching it off cost 1–4% and
+  made results independent of the thread count (§10). The pragma in
+  `src/zff_fp_contract.h` now reads `#pragma clang fp contract(off)`;
+  `Makevars` is unchanged.
+- **Kept from ducc0 until D18: fused multiply-add contraction**, the one flag that
   matters for speed on hardware with FMA (every arm64 machine, and any
   x86-64 build with a user `-march`). It is also the main reason
   bit-for-bit equality with a build on another platform cannot be
@@ -1250,6 +1263,8 @@ decide whether it is worth a design.
 | D14 | Bit-for-bit parity | withdrawn; tolerance only, so §12.3's flags are allowed |
 | D15 | Build flags | no `-f`/`-m`/`-O` flag in `Makevars` (R warns); FMA contraction by GCC's default and a clang pragma; native build is the user's `~/.R/Makevars` |
 | D16 | Primary comparator | fftwtools, on §11's grid, within 1.5× |
+| D17 | Real-transform default axes | `axes = NULL` halves the first dimension (R's contiguous axis); explicit `axes` halve the last listed, as SciPy |
+| D18 | Contraction | off, so results are bit-identical whatever `workers` is; `zufft_info()$fp_contract` reports builds that still contract |
 
 ## 16. Open questions
 
@@ -1282,20 +1297,14 @@ decide whether it is worth a design.
    measures a gain? Recommended: only with a number in §12.3 and a check
    that the fixtures still pass.
 
-9. **Default axis order of the real transforms.** In R the first axis is
-   contiguous, and halving it is about 1.8 times faster than halving the
-   last (§11). Keep SciPy's "last listed axis is halved" with `axes = NULL`
-   meaning `1:k`, or make `axes = NULL` mean `k:1` for the real transforms
-   only? Recommended: keep SciPy's rule, because it is what the fixtures,
-   the migration tables and `reticulate` users expect, and document the
-   faster order; decide before 0.1.0 because changing it later breaks
-   callers.
+9. **Default axis order of the real transforms.** *Decided (D17):* with
+   `axes = NULL` the real transforms halve the first dimension, aligned
+   with R's column-major layout (and with fftwtools); an explicit `axes`
+   still halves the last axis listed, as SciPy does.
 
-10. **Contraction or thread-count independence.** Fused multiply-add
-   contraction (§12.3) is worth 1–4% but lets results differ in the last
-   bit between thread counts on FMA hardware (§10). Recommended: keep it,
-   as the performance goal asks, and document it; switch it off only if a
-   consumer needs results independent of `workers`.
+10. **Contraction or thread-count independence.** *Decided (D18):*
+   contraction off; results do not depend on `workers` (§10). The cost is
+   1–4% on FMA hardware and nothing on CRAN's x86-64 builds.
 
 ## 17. What this RFC does not decide
 

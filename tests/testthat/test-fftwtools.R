@@ -91,7 +91,10 @@ test_that("2-d, 3-d and n-d rows of the fftwtools table hold", {
   expect_fft_equal(fft_c2c(a), fftwtools::fftw3d(a), N = 60)
   expect_fft_equal(fft_c2c(az), fftwtools::fftw_c2c_3d(az), N = 60)
   expect_fft_equal(fft_c2c(az), fftwtools::fftw_c2c_xd(az), N = 60)
-  # FFTW is row-major, so fftwtools halves R's first axis.
+  # FFTW is row-major, so fftwtools halves R's first axis, as zufft's
+  # default does.
+  expect_fft_equal(fft_r2c(x), fftwtools::fftw_r2c_2d(x, HermConj = 0), N = 35)
+  expect_fft_equal(fft_r2c(a), fftwtools::fftw_r2c_3d(a, HermConj = 0), N = 60)
   expect_fft_equal(
     fft_r2c(x, axes = 2:1),
     fftwtools::fftw_r2c_2d(x, HermConj = 0),
