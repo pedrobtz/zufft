@@ -207,14 +207,10 @@ Other platforms don’t benefit:
 - Windows builds ignore `ZUFFT_CXXFLAGS` and stay portable, because code
   built for AVX by the GCC in Rtools crashed in our tests.
 
-There are two things to keep in mind:
-
-- The package then runs only on CPUs like yours, so don’t copy the
-  installed library to other machines.
-
-- With GCC on a CPU with fused multiply-add (FMA), results can differ in
-  the last bit between thread counts. `zufft::zufft_info()$fp_contract`
-  reports `"fast"` when that applies. CRAN’s builds report `"off"`.
+Keep in mind that with GCC on a CPU with fused multiply-add (FMA),
+results can differ in the last bit between thread counts.
+`zufft::zufft_info()$fp_contract` reports `"fast"` when that applies.
+CRAN’s builds report `"off"`.
 
 ## Licence
 
