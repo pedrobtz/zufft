@@ -34,9 +34,13 @@ Depends:
     R (>= 4.1)
 Suggests: 
     fftwtools,
+    knitr,
     parallel,
+    rmarkdown,
     testthat (>= 3.0.0),
     withr
+VignetteBuilder: 
+    knitr
 Config/roxygen2/version: 8.1.0
 Config/testthat/edition: 3
 Copyright: See inst/COPYRIGHTS.

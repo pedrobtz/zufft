@@ -2,3 +2,32 @@ url: https://pedrobtz.github.io/zufft/
 template:
   bootstrap: 5
 
+reference:
+  - title: Fourier transforms
+    contents:
+      - fft_c2c
+  - title: Cosine and sine transforms
+    contents:
+      - fft_dct
+  - title: Lengths, frequencies and shifts
+    contents:
+      - fft_next_len
+      - fft_freq
+      - fft_shift
+  - title: Threads
+    contents:
+      - fft_workers
+  - title: Compatibility with stats
+    contents:
+      - fft_stats
+  - title: Package information
+    contents:
+      - zufft_info
+      - zufft-package
+
+articles:
+  - title: Getting started
+    navbar: ~
+    contents:
+      - migrating-from-fftwtools
+      - articles/zufft-for-scipy-users
