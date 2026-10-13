@@ -4,3 +4,11 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^CLAUDE\.md$
+^README\.Rmd$
+^tools$
+^bench$
+^cran-comments\.md$
+^CRAN-SUBMISSION$
+^src/.*\.o$
+^src/.*\.(so|dll|dylib|a)$

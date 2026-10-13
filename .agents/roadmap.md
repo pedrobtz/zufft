@@ -3,9 +3,9 @@
 Status: draft 2026-10-13. Implements [design.md](design.md) (RFC 0026,
 revised 2026-10-13).
 Target: v0.1.0, the first CRAN release.
-Tracking: [v0.1.0 (#?)](https://github.com/pedrobtz/zufft/issues/?), with one
+Tracking: [v0.1.0 (#2)](https://github.com/pedrobtz/zufft/issues/2), with one
 sub-issue per stage;
-[CRAN-submission (#?)](https://github.com/pedrobtz/zufft/issues/?).
+[CRAN-submission (#14)](https://github.com/pedrobtz/zufft/issues/14).
 
 Where the package stands today (verified 2026-10-13): a `usethis` skeleton.
 `DESCRIPTION` has placeholder Title, Description and author; `License: MIT +
@@ -24,22 +24,22 @@ portfolio requires. Stage numbers below are the roadmap's, not the design's.
 
 | Stage | Title | Issue | Pull request | Done |
 | --- | --- | --- | --- | --- |
-| 0 | [Package identity](#stage-0--package-identity) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 1 | [Vendored ducc0 and the build](#stage-1--vendored-ducc0-and-the-build) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 2 | [Portability spikes](#stage-2--portability-spikes) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 3 | [Fourier transforms](#stage-3--fourier-transforms) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 4 | [Cosine and sine transforms](#stage-4--cosine-and-sine-transforms) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 5 | [Helpers and stats compatibility](#stage-5--helpers-and-stats-compatibility) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 6 | [Thread pool](#stage-6--thread-pool) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 7 | [C table](#stage-7--c-table) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 8 | [Conformance and benchmarks](#stage-8--conformance-and-benchmarks) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 9 | [Documentation](#stage-9--documentation) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
-| 10 | [v0.1.0 readiness](#stage-10--v010-readiness) | [#?](https://github.com/pedrobtz/zufft/issues/?) | | |
+| 0 | [Package identity](#stage-0--package-identity) | [#3](https://github.com/pedrobtz/zufft/issues/3) | | |
+| 1 | [Vendored ducc0 and the build](#stage-1--vendored-ducc0-and-the-build) | [#4](https://github.com/pedrobtz/zufft/issues/4) | | |
+| 2 | [Portability spikes](#stage-2--portability-spikes) | [#5](https://github.com/pedrobtz/zufft/issues/5) | | |
+| 3 | [Fourier transforms](#stage-3--fourier-transforms) | [#6](https://github.com/pedrobtz/zufft/issues/6) | | |
+| 4 | [Cosine and sine transforms](#stage-4--cosine-and-sine-transforms) | [#7](https://github.com/pedrobtz/zufft/issues/7) | | |
+| 5 | [Helpers and stats compatibility](#stage-5--helpers-and-stats-compatibility) | [#8](https://github.com/pedrobtz/zufft/issues/8) | | |
+| 6 | [Thread pool](#stage-6--thread-pool) | [#9](https://github.com/pedrobtz/zufft/issues/9) | | |
+| 7 | [C table](#stage-7--c-table) | [#10](https://github.com/pedrobtz/zufft/issues/10) | | |
+| 8 | [Conformance and benchmarks](#stage-8--conformance-and-benchmarks) | [#11](https://github.com/pedrobtz/zufft/issues/11) | | |
+| 9 | [Documentation](#stage-9--documentation) | [#12](https://github.com/pedrobtz/zufft/issues/12) | | |
+| 10 | [v0.1.0 readiness](#stage-10--v010-readiness) | [#13](https://github.com/pedrobtz/zufft/issues/13) | | |
 
 ## Stage 0 — Package identity
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#3](https://github.com/pedrobtz/zufft/issues/3), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** The repository says what zufft is and who wrote it, and a reader
 can orient from `CLAUDE.md` without the design.
@@ -77,8 +77,8 @@ name) is settled by merging this stage with `Package: zufft`.
 
 ## Stage 1 — Vendored ducc0 and the build
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#4](https://github.com/pedrobtz/zufft/issues/4), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** The 17-file ducc0 subset compiles inside the package on every CI
 leg with the `Makevars` of design §12.3, its provenance and licence are
@@ -136,8 +136,8 @@ exposed yet.
 
 ## Stage 2 — Portability spikes
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#5](https://github.com/pedrobtz/zufft/issues/5), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** The two go/no-go questions the design puts before feature work
 are answered with evidence and written into `design.md`: threads on
@@ -172,8 +172,8 @@ Windows, and the `Rcomplex` path.
 
 ## Stage 3 — Fourier transforms
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#6](https://github.com/pedrobtz/zufft/issues/6), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** `fft_c2c()`, `fft_r2c()` and `fft_c2r()` work on vectors and
 arrays over any axes with `n`, `norm` (all four values) and the error
@@ -215,8 +215,8 @@ is recorded.
 
 ## Stage 4 — Cosine and sine transforms
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#7](https://github.com/pedrobtz/zufft/issues/7), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** `fft_dct()` and `fft_dst()` types I–IV, forward and inverse,
 with `norm`, `orthogonalize` and SciPy's complex-input rule.
@@ -244,8 +244,8 @@ with `norm`, `orthogonalize` and SciPy's complex-input rule.
 
 ## Stage 5 — Helpers and stats compatibility
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#8](https://github.com/pedrobtz/zufft/issues/8), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** The rest of the R surface exists: length, frequency and shift
 helpers, `fft_stats()` and `mvfft_stats()`, and the `workers` accessors.
@@ -276,8 +276,8 @@ helpers, `fft_stats()` and `mvfft_stats()`, and the `workers` accessors.
 
 ## Stage 6 — Thread pool
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#9](https://github.com/pedrobtz/zufft/issues/9), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** `workers > 1` runs ducc0's parallel regions on zufft's own lazy
 pool, safely across forks and unload, within CRAN's two-core rule.
@@ -311,8 +311,8 @@ pool, safely across forks and unload, within CRAN's two-core rule.
 
 ## Stage 7 — C table
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#10](https://github.com/pedrobtz/zufft/issues/10), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** Other packages can call zufft's transforms from C through
 `LinkingTo: zufft`, as `zutsne` will.
@@ -345,8 +345,8 @@ pool, safely across forks and unload, within CRAN's two-core rule.
 
 ## Stage 8 — Conformance and benchmarks
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#11](https://github.com/pedrobtz/zufft/issues/11), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** The compatibility statement of §1 is tested, not asserted: SciPy
 fixtures, the fftwtools oracle, the identities, fuzzing, and the full
@@ -383,8 +383,8 @@ benchmark grid.
 
 ## Stage 9 — Documentation
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#12](https://github.com/pedrobtz/zufft/issues/12), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** A fftwtools or scipy.fft user can switch from the documentation
 alone.
@@ -415,8 +415,8 @@ alone.
 
 ## Stage 10 — v0.1.0 readiness
 
-**Issue.** [#?](https://github.com/pedrobtz/zufft/issues/?), sub-issue of
-[v0.1.0](https://github.com/pedrobtz/zufft/issues/?).
+**Issue.** [#13](https://github.com/pedrobtz/zufft/issues/13), sub-issue of
+[v0.1.0](https://github.com/pedrobtz/zufft/issues/2).
 
 **Goal.** Only the submission itself is left.
 

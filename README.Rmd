@@ -1,0 +1,45 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# zufft
+
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/pedrobtz/zufft/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedrobtz/zufft/actions/workflows/R-CMD-check.yaml)
+[![coverage](https://raw.githubusercontent.com/pedrobtz/zufft/main/.github/badges/coverage.svg)](https://github.com/pedrobtz/zufft/actions/workflows/coverage.yaml)
+<!-- badges: end -->
+
+zufft computes fast Fourier, cosine and sine transforms in R. It bundles the
+BSD-licensed FFT code of [ducc0](https://github.com/mreineck/ducc), the same
+subset and commit that SciPy uses, so it needs no system FFTW library and
+carries no GPL code.
+
+Its goals, in order:
+
+1. **Replace fftwtools without FFTW.** Install with `install.packages()`
+   alone, under a permissive licence.
+2. **Perform like fftwtools.** Within 1.5 times its speed everywhere, and
+   faster on prime lengths, many simultaneous transforms and threads.
+3. **An easy, familiar API.** Function names a fftwtools user recognises,
+   with the conventions of `scipy.fft` for axes, normalisation, cosine and
+   sine transforms, and threads.
+
+> **Status (2026-10-13): not yet usable.** The package is being built stage
+> by stage; see the [roadmap](https://github.com/pedrobtz/zufft/blob/main/.agents/roadmap.md) and the
+> [v0.1.0 issue](https://github.com/pedrobtz/zufft/issues/2).
+
+## Installation
+
+You can install the development version of zufft from
+[GitHub](https://github.com/pedrobtz/zufft) with:
+
+``` r
+# install.packages("pak")
+pak::pak("pedrobtz/zufft")
+```
