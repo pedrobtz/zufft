@@ -37,8 +37,14 @@ test_that("fft_r2c() and fft_c2r() match the defining sum for n <= 64", {
 
 test_that("fft_c2c() agrees with stats::fft() for lengths 1 to 1024", {
   withr::local_seed(13)
+  # Every length off CRAN; on CRAN 1-256 and a spread above, for time.
+  lens <- if (identical(Sys.getenv("NOT_CRAN"), "true")) {
+    1:1024
+  } else {
+    c(1:256, seq(257, 1024, by = 37))
+  }
   expect_fft_batch({
-    for (n in 1:1024) {
+    for (n in lens) {
       z <- random_complex(n)
       expect_fft_equal(fft_c2c(z), stats::fft(z), label = n)
     }
