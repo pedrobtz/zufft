@@ -22,7 +22,9 @@ jobs:
       sources: src/zff_*.cpp
       exclude-sources: |
         src/zff_stress.cpp
-      # -fno-sanitize=vptr: the vptr check needs UBSan's C++ runtime, which
-      # the workflow's clang (C) driver does not link.
-      cflags: -g -O1 -fno-omit-frame-pointer -fno-sanitize=vptr -std=c++17 -Isrc -Iinst/include -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread -lstdc++ -lm
+      # The workflow links with the clang C driver, which leaves out UBSan's
+      # C++ runtime (the vptr check needs it): -fsanitize-link-c++-runtime
+      # adds it back. -fno-sanitize=vptr would not stick, because the
+      # workflow's -fsanitize=...,undefined comes after these flags.
+      cflags: -g -O1 -fno-omit-frame-pointer -fsanitize-link-c++-runtime -std=c++17 -Isrc -Iinst/include -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread -lstdc++ -lm
       max-total-time: ${{ github.event_name == 'schedule' && 1800 || 120 }}
