@@ -858,14 +858,32 @@ pthread_pfork, needed by ducc_fft"), citing freezes with MinGW GCC's
 threading (`mreineck/pocketfft` issue 1). CRAN's Windows binaries are
 built with Rtools' MinGW-w64 GCC. zufft's own pool does not need
 `pthread_atfork`, but it uses `std::thread`, `std::mutex` and
-`std::condition_variable` from the same toolchain. Stage 0 must show,
-before anything else is written, that the thread tests of §10 pass on
-the Windows leg repeatedly (a stress loop of many short threaded calls)
-without a hang. If they do not, zufft builds with
-`DUCC0_NO_LOWLEVEL_THREADING` on Windows only, `workers` above 1 is
-accepted and ignored there with a one-time warning, and `zufft_info()`
-reports it; results are unaffected. fftwtools has no threads anywhere,
-so goal 2 does not depend on this outcome.
+`std::condition_variable` from the same toolchain. Before the pool was
+written, a stress test had to show that these primitives run many short
+threaded regions on the Windows leg, repeatedly, without a hang. Had it
+failed, zufft would build with `DUCC0_NO_LOWLEVEL_THREADING` on Windows
+only and ignore `workers` above 1 there with a one-time warning.
+fftwtools has no threads anywhere, so goal 2 does not depend on this
+outcome.
+
+**Outcome (Stage 2, 2026-10-13): go.** `src/zff_stress.cpp` builds pools
+of `std::thread` workers that wait on a `std::condition_variable`, runs
+short parallel regions through each, and tears the pool down: 200 pools
+× 200 regions × 4 threads per process. The `portability` workflow ran 20
+separate processes per OS on pedrobtz/zufft#17 with no hang and the
+expected checksum every time:
+
+| Runner | Runs | Min | Mean | Max |
+| --- | --- | --- | --- | --- |
+| windows-latest (Rtools 4.5, MinGW-w64 GCC) | 20 | 1.97 s | 2.03 s | 2.10 s |
+| ubuntu-latest | 20 | 1.05 s | 1.08 s | 1.12 s |
+| macos-latest | 20 | 0.61 s | 0.82 s | 0.92 s |
+
+zufft therefore keeps threads on Windows, and `Makevars.win` equals
+`Makevars`. The workflow stays in CI, so a toolchain change that brings
+the hang back fails a pull request. SciPy's problem was ducc0's own pool,
+which needs `pthread_atfork`; zufft's pool (Stage 6) uses `pthread_atfork`
+only on POSIX (§6.5).
 
 ### 12.2 Everywhere
 
@@ -876,16 +894,17 @@ so goal 2 does not depend on this outcome.
   drafting build the shared object still exported 65 symbols, all
   libstdc++ template instantiations and type information. A linker
   version script exporting only `R_init_zufft` removed them on Linux.
-  Stage 0 settles the equivalent on macOS (`-exported_symbols_list`) and
-  Windows (a `.def` file or `R_init_zufft` alone with
-  `-fvisibility-inlines-hidden`), and whether the gain is worth a
-  per-platform linker flag; if not, `$(CXX_VISIBILITY)` plus
-  `attribute_visible` on `R_init_zufft` is accepted as "hidden enough".
+  The equivalents are `-exported_symbols_list` on macOS and a `.def` file
+  on Windows. The question was whether the gain is worth a per-platform
+  linker flag; if not, `$(CXX_VISIBILITY)` plus `attribute_visible` on
+  `R_init_zufft` is accepted as "hidden enough".
   **Stage 1 outcome (2026-10-13):** `$(CXX_VISIBILITY)` and
   `$(C_VISIBILITY)` alone are used. With Apple clang 21 on macOS arm64 the
   installed shared object exports only `R_init_zufft`. On Linux the
-  `build-flags` job lists the exported symbols in its log; any libstdc++
-  weak symbols left there are accepted, because a version script needs a
+  `build-flags` job lists the exported symbols in its log: 58 on
+  ubuntu-latest with GCC, `R_init_zufft` and 57 libstdc++ template
+  instantiations (`std::vector`, `std::function`, `std::shared_ptr`
+  members). They are accepted, because a version script needs a
   platform-specific linker flag that portable `Makevars` cannot select
   without `configure`.
 - SIMD is chosen at compile time from the compiler's macros
@@ -908,16 +927,30 @@ so goal 2 does not depend on this outcome.
   real and imaginary scalar access for a genuine `std::complex` array, but
   that does not by itself make an `Rcomplex` array a live
   `std::complex<double>` array or waive C++ aliasing and lifetime rules.
-  Stage 0 therefore has two accepted implementations: a zero-copy path only
+  There were therefore two accepted implementations: a zero-copy path only
   on compiler/platform combinations for which the representation and
   aliasing strategy are explicitly justified and exercised under LTO and
   sanitizers, or a portable marshal path that assigns each component into
-  genuine `std::complex<double>` storage and copies results back. The latter
-  is the required fallback and its extra memory is reported by
-  `zufft_info()`; layout equality alone is not treated as proof. The
-  marshal path costs one pass over the data per complex transform, which
-  §11 will see; that is a reason to make the zero-copy case work on the
-  common toolchains, not to skip the proof.
+  genuine `std::complex<double>` storage and copies results back; layout
+  equality alone was not treated as proof.
+
+  **Outcome (Stage 2, 2026-10-13): zero-copy on GCC and clang, marshal
+  elsewhere.** The argument: the standard makes `std::complex<double>`
+  array-compatible with `double[2]`; R's `Rcomplex` is a union of `{double
+  r, i}` and a C99 `double _Complex`; libstdc++ stores
+  `std::complex<double>` as a `double _Complex` and libc++ as two doubles,
+  so the in-place view matches a member of the union on both standard
+  libraries CRAN uses. The view is created only in the C++ shim
+  (`src/zff_transform.cpp`), and the C glue never touches the same memory
+  through another type during a call: crop is a strided view, and zero
+  padding copies raw bytes with `memcpy`. The evidence, all green on
+  pedrobtz/zufft#17: UBSan with clang and gcc, ASan with clang and gcc,
+  LTO, valgrind and gctorture, each running a complex transform checked
+  against `stats::fft()`. The marshal path is compiled when
+  `ZFF_COMPLEX_MARSHAL` is defined or the compiler is neither GCC nor
+  clang; a CI job builds it that way and runs the whole suite, so the
+  fallback cannot rot. `zufft_info()$complex_path` reports which one a
+  build uses.
 
 ### 12.3 Makevars
 
@@ -1019,9 +1052,10 @@ PKG_LIBS = -pthread
   route exists and keeps CRAN's flag scan clean. The README documents it
   with the measured gain from §11.
 - **`Makevars.win`** is the same file plus whatever §12.1 decides
-  (`-DDUCC0_NO_LOWLEVEL_THREADING` if the go/no-go fails). `-pthread` is
-  accepted by Apple clang without a warning; the Windows and Linux legs of
-  Stage 1's CI run confirm it there.
+  (`-DDUCC0_NO_LOWLEVEL_THREADING` if the go/no-go had failed; it did
+  not, so the two files are identical). `-pthread` builds without a
+  warning on every leg: Apple clang, Rtools' GCC on Windows, and GCC and
+  clang on Linux (Stage 1 and 2 CI).
 - **Checked in CI.** The r-actions check fails on the `Makevars` WARNING
   on every leg. The `build-flags` workflow runs `R CMD check --as-cran` on
   Linux and macOS and `tools/check-build-log` fails it on the
