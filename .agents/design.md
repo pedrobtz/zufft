@@ -502,8 +502,12 @@ the output, not `NA_real_`. `stats::fft()` behaves the same way
   plan on one thread, except that a 1-D complex transform of length at
   least 131 072 whose length factors as `f1 × f2` with `f1 >= 16` is
   reshaped to 2-D (Bailey's four-step) and transformed with both SIMD and
-  threads. A 1-D real transform never uses threads. These are the
-  shapes §11 measures.
+  threads. These are the shapes §11 measures. **Measured (Stage 8):** the
+  claim in the first draft that a 1-D real transform never uses threads is
+  wrong; `exec_simple` hands `nthreads` to the 1-D plan, whose passes run
+  in parallel, so with two threads 1-D transforms from about 65 536 points
+  speed up 1.3–2× (complex and real), while below a few thousand points the
+  thread hand-off costs more than it saves (1 024 points: 12.4 → 13.6 µs).
 - ducc0 is built with `DUCC0_CUSTOM_LOWLEVEL_THREADING`, and zufft
   supplies the pool. Upstream's default pool was rejected for three
   measured reasons: it is created on the first transform with one worker
@@ -889,6 +893,12 @@ AVX2 codelets at run time while CRAN-portable zufft is SSE2 on x86-64
 (§12.3). Results go in `bench/RESULTS.md` with the hardware, and this
 section is updated with the measured numbers.
 
+**Stage 8 full grid (2026-10-13).** The macOS section of
+`bench/RESULTS.md` now has `workers = 1` and `2` for every case. With two
+threads zufft is 2.9× to 10× faster than fftwtools on the
+multi-dimensional and column-wise cases (128³ complex: 9.2 ms against
+89.3 ms) and every single-threaded figure below still holds.
+
 **Measured (Stage 3, 2026-10-13, `workers = 1`).** On an Apple M-series
 arm64 laptop with Homebrew's FFTW 3 for fftwtools 0.9-11 (full table in
 `bench/RESULTS.md`), zufft is faster than fftwtools on 32 of the 33 grid
@@ -918,7 +928,7 @@ few thousand points.
 | Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× | met: worst 1.02× | met: worst 1.44× |
 | Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) | met: 0.46–0.68× | met: 0.54–0.83× |
 | Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) | met: 0.69–1.02× | **missed**: complex 1 000 003 at 1.23× (100 003 at 1.11×, real 0.73–0.82×) |
-| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | met with `axes = 2:1`: 1.82×; **missed** with the default axes: 1.49× (Stage 6) | Stage 8 |
+| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | met with `axes = 2:1`: 1.87× (Stage 8 grid); **missed** with the default axes: 1.49× (Stage 6) | see `bench/RESULTS.md` |
 | `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× | met: 6.5× | met: 8.0× |
 | `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× | met: 651× | met: 624× |
 
