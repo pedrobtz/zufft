@@ -1,0 +1,25 @@
+#!/bin/sh
+# inst/include/zufft.h must compile standalone as C99 and as C++17, with
+# only R's headers on the include path (design §7). Run from the package
+# root; CC and CXX default to cc and c++.
+set -eu
+CC=${CC:-cc}
+CXX=${CXX:-c++}
+RINC=$(R RHOME)/include
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+cat > "$tmp/use.c" <<'EOC'
+#include <zufft.h>
+int zufft_header_check(void);
+int zufft_header_check(void) {
+  size_t n[1] = {4};
+  double f = 0;
+  const zufft_api *api = 0;
+  return (int) sizeof *api + zufft_scale(ZUFFT_NORM_ORTHO, 1, n, 1, 0, &f) +
+         (api ? (int) api->abi_version : 0);
+}
+EOC
+cp "$tmp/use.c" "$tmp/use.cpp"
+"$CC" -std=c99 -Wall -Wextra -Werror -Wno-error=c23-extensions -I"$RINC" -Iinst/include -c "$tmp/use.c" -o "$tmp/c.o"
+"$CXX" -std=c++17 -Wall -Wextra -Werror -I"$RINC" -Iinst/include -c "$tmp/use.cpp" -o "$tmp/cpp.o"
+echo "ok  inst/include/zufft.h compiles as C99 and C++17"
