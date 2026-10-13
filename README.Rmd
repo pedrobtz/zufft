@@ -18,8 +18,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ## Overview
 
 zufft provides fast Fourier transforms (FFTs), along with discrete cosine
-and sine transforms (DCTs and DSTs). It's designed to replace fftwtools,
-without the need for FFTW:
+and sine transforms (DCTs and DSTs):
 
 * `fft_c2c()` computes the discrete Fourier transform (DFT), like
   `stats::fft()`.
