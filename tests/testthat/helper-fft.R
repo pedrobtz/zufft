@@ -156,3 +156,102 @@ expect_threads_equal <- function(actual, expected, N = length(expected)) {
     expect_identical(actual, expected)
   }
 }
+
+# The SciPy reference fixtures (tools/make-scipy-reference.py): the cases
+# table and a reader for one stored array.
+scipy_cases <- function() {
+  dir <- test_path("fixtures", "scipy")
+  cases <- utils::read.delim(
+    file.path(dir, "cases.tsv"),
+    colClasses = "character",
+    na.strings = character(0)
+  )
+  size <- file.size(file.path(dir, "data.bin"))
+  con <- file(file.path(dir, "data.bin"), "rb")
+  on.exit(close(con))
+  data <- readBin(con, "double", n = size / 8, size = 8, endian = "little")
+  list(cases = cases, data = data)
+}
+
+scipy_array <- function(data, dims, cplx, off) {
+  d <- as.integer(strsplit(dims, ";", fixed = TRUE)[[1]])
+  n <- prod(d)
+  off <- as.numeric(off)
+  if (cplx == "1") {
+    v <- data[off + seq_len(2 * n)]
+    x <- complex(real = v[c(TRUE, FALSE)], imaginary = v[c(FALSE, TRUE)])
+  } else {
+    x <- data[off + seq_len(n)]
+  }
+  if (length(d) > 1) {
+    dim(x) <- d
+  }
+  x
+}
+
+# Runs one fixture case through zufft; returns NULL on success or a string
+# describing the failure.
+scipy_run <- function(row, data) {
+  num <- function(s) {
+    if (nzchar(s)) as.numeric(strsplit(s, ";", fixed = TRUE)[[1]]) else NULL
+  }
+  x <- scipy_array(data, row$in_dims, row$in_cplx, row$in_off)
+  n <- num(row$n)
+  axes <- num(row$axes)
+  norm <- if (nzchar(row$norm)) row$norm else "backward"
+  orth <- if (nzchar(row$orth)) as.logical(row$orth) else NULL
+  inverse <- row$inverse == "1"
+  type <- if (nzchar(row$type)) as.integer(row$type) else NULL
+  call <- function() {
+    switch(
+      row$fn,
+      c2c = fft_c2c(x, inverse = inverse, n = n, axes = axes, norm = norm),
+      r2c = fft_r2c(x, n = n, axes = axes, norm = norm),
+      c2r = fft_c2r(x, n = n, axes = axes, norm = norm),
+      dct = fft_dct(
+        x,
+        type,
+        inverse,
+        n = n,
+        axes = axes,
+        norm = norm,
+        orthogonalize = orth
+      ),
+      dst = fft_dst(
+        x,
+        type,
+        inverse,
+        n = n,
+        axes = axes,
+        norm = norm,
+        orthogonalize = orth
+      )
+    )
+  }
+  if (row$error == "1") {
+    res <- tryCatch(call(), zufft_error = function(e) e)
+    return(
+      if (inherits(res, "zufft_error")) {
+        NULL
+      } else {
+        "SciPy fails but zufft does not"
+      }
+    )
+  }
+  got <- tryCatch(call(), error = function(e) e)
+  if (inherits(got, "error")) {
+    return(paste("error:", conditionMessage(got)))
+  }
+  want <- scipy_array(data, row$out_dims, row$out_cplx, row$out_off)
+  if (!identical(length(got), length(want))) {
+    return("length differs")
+  }
+  dims <- as.integer(strsplit(row$in_dims, ";", fixed = TRUE)[[1]])
+  ax <- if (is.null(axes)) seq_along(dims) else axes
+  N <- prod(pmax(dims[ax], if (is.null(n)) 1 else n)) *
+    if (row$fn %in% c("dct", "dst")) 2 else 1
+  err <- max(Mod(as.vector(got) - as.vector(want)))
+  if (err > fft_tol(want, N)) {
+    sprintf("max error %.3g over tolerance %.3g", err, fft_tol(want, N))
+  }
+}

@@ -32,7 +32,7 @@ portfolio requires. Stage numbers below are the roadmap's, not the design's.
 | 5 | [Helpers and stats compatibility](#stage-5--helpers-and-stats-compatibility) | [#8](https://github.com/pedrobtz/zufft/issues/8) | [#20](https://github.com/pedrobtz/zufft/pull/20) | 2026-10-13 |
 | 6 | [Thread pool](#stage-6--thread-pool) | [#9](https://github.com/pedrobtz/zufft/issues/9) | [#21](https://github.com/pedrobtz/zufft/pull/21) | 2026-10-13 |
 | 7 | [C table](#stage-7--c-table) | [#10](https://github.com/pedrobtz/zufft/issues/10) | [#22](https://github.com/pedrobtz/zufft/pull/22) | 2026-10-13 |
-| 8 | [Conformance and benchmarks](#stage-8--conformance-and-benchmarks) | [#11](https://github.com/pedrobtz/zufft/issues/11) | | |
+| 8 | [Conformance and benchmarks](#stage-8--conformance-and-benchmarks) | [#11](https://github.com/pedrobtz/zufft/issues/11) | [#23](https://github.com/pedrobtz/zufft/pull/23) | 2026-10-13 |
 | 9 | [Documentation](#stage-9--documentation) | [#12](https://github.com/pedrobtz/zufft/issues/12) | | |
 | 10 | [v0.1.0 readiness](#stage-10--v010-readiness) | [#13](https://github.com/pedrobtz/zufft/issues/13) | | |
 
@@ -421,6 +421,17 @@ benchmark grid.
 - The long-vector gate has run, or §2 and §14 no longer claim long vectors.
 
 **Design.** §10, §11, §14 items 2, 4, 6 and 7.
+
+**Deviations (2026-10-13).**
+- The fixtures come from the released SciPy 1.18.1 wheel (whose duccfft
+  vendors ducc0 `8e30567`), not from a SciPy built at commit `ecee36d`:
+  building SciPy from source needs a Fortran toolchain and BLAS, and with
+  D14 the criterion is the §10 tolerance, not bit-identity, so any SciPy on
+  the ducc0 backend is a sound oracle. `fixtures/scipy/MANIFEST` records
+  the release; the generator no longer checks the vendored commit.
+- The fixture set was trimmed to fit the 1 MB budget (2040 cases, 1.00 MB).
+- The long-vector gate could not run (no runner with about 50 GB), so long
+  vectors left the 0.1.0 scope as the design prescribes.
 
 ## Stage 9 — Documentation
 
