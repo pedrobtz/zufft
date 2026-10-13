@@ -14,7 +14,9 @@ Authors@R: c(
     person("Massachusetts Institute of Technology", role = "cph",
            comment = "odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h"),
     person("The TensorFlow Authors", role = "cph",
-           comment = "helpers in src/ducc0/infra/threading.cc")
+           comment = "helpers in src/ducc0/infra/threading.cc"),
+    person("SciPy Developers", role = "cph",
+           comment = "fast-length search in src/zff_lengths.cpp, from SciPy")
   )
 Description: Computes discrete Fourier transforms (complex,
     real-to-complex and complex-to-real) and discrete cosine and sine

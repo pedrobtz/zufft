@@ -29,7 +29,7 @@ portfolio requires. Stage numbers below are the roadmap's, not the design's.
 | 2 | [Portability spikes](#stage-2--portability-spikes) | [#5](https://github.com/pedrobtz/zufft/issues/5) | [#17](https://github.com/pedrobtz/zufft/pull/17) | 2026-10-13 |
 | 3 | [Fourier transforms](#stage-3--fourier-transforms) | [#6](https://github.com/pedrobtz/zufft/issues/6) | [#18](https://github.com/pedrobtz/zufft/pull/18) | 2026-10-13 |
 | 4 | [Cosine and sine transforms](#stage-4--cosine-and-sine-transforms) | [#7](https://github.com/pedrobtz/zufft/issues/7) | [#19](https://github.com/pedrobtz/zufft/pull/19) | 2026-10-13 |
-| 5 | [Helpers and stats compatibility](#stage-5--helpers-and-stats-compatibility) | [#8](https://github.com/pedrobtz/zufft/issues/8) | | |
+| 5 | [Helpers and stats compatibility](#stage-5--helpers-and-stats-compatibility) | [#8](https://github.com/pedrobtz/zufft/issues/8) | [#20](https://github.com/pedrobtz/zufft/pull/20) | 2026-10-13 |
 | 6 | [Thread pool](#stage-6--thread-pool) | [#9](https://github.com/pedrobtz/zufft/issues/9) | | |
 | 7 | [C table](#stage-7--c-table) | [#10](https://github.com/pedrobtz/zufft/issues/10) | | |
 | 8 | [Conformance and benchmarks](#stage-8--conformance-and-benchmarks) | [#11](https://github.com/pedrobtz/zufft/issues/11) | | |
@@ -302,6 +302,12 @@ helpers, `fft_stats()` and `mvfft_stats()`, and the `workers` accessors.
 
 **Design.** §5.1, §5.3, §6.2, §6.5 (accessors), §15 D9; open question 2
 (masking) is settled as "no" by merging this stage.
+
+**Deviation (2026-10-13).** `fft_next_len()` and `fft_prev_len()` are
+tested exhaustively for 1–10 000 against SciPy's documented definition (the
+smallest 11-smooth or 5-smooth number at least `n`, the largest at most
+`n`), not against `scipy.fft.next_fast_len` fixtures: no SciPy environment
+exists before Stage 8, whose fixture generator adds them.
 
 ## Stage 6 — Thread pool
 

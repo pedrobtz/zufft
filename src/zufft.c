@@ -56,12 +56,37 @@ static SEXP zff_stress(SEXP nthreads, SEXP pools, SEXP regions) {
   return Rf_ScalarReal(checksum);
 }
 
+
+/* fft_next_len() / fft_prev_len(): n is a double vector of whole numbers in
+ * 1..2^52, already checked in R. */
+static SEXP zff_lengths(SEXP n, SEXP real, SEXP prev) {
+  const R_xlen_t len = XLENGTH(n);
+  const int r = Rf_asLogical(real), p = Rf_asLogical(prev);
+  SEXP out = PROTECT(Rf_allocVector(REALSXP, len));
+  const double *in = REAL(n);
+  double *o = REAL(out);
+  for (R_xlen_t i = 0; i < len; ++i) {
+    size_t v = (size_t) in[i];
+    o[i] = (double) (p ? zff_prev_good_size(v, r) : zff_good_size(v, r));
+  }
+  UNPROTECT(1);
+  return out;
+}
+
+/* fft_workers(): mirror the session default where the C table can read it. */
+static SEXP zff_set_workers(SEXP n) {
+  zff_set_default_workers(Rf_asInteger(n));
+  return R_NilValue;
+}
+
 static const R_CallMethodDef call_methods[] = {
   {"zff_info", (DL_FUNC) &zff_info, 0},
   {"zff_scratch_c2c_call", (DL_FUNC) &zff_scratch_c2c, 2},
   {"zff_stress_call", (DL_FUNC) &zff_stress, 3},
   {"zff_fft_call", (DL_FUNC) &zff_fft, 8},
   {"zff_r2r_call", (DL_FUNC) &zff_r2r, 9},
+  {"zff_lengths_call", (DL_FUNC) &zff_lengths, 3},
+  {"zff_set_workers_call", (DL_FUNC) &zff_set_workers, 1},
   {NULL, NULL, 0}
 };
 
