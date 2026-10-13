@@ -180,14 +180,6 @@ Sys.setenv(ZUFFT_CXXFLAGS = "-march=native")
 install.packages("zufft", type = "source")
 ```
 
-If you want the development version, clear pak's cache first. Otherwise pak
-reuses a cached build of the same commit, which ignores the variable:
-
-```{r, eval = FALSE}
-pak::cache_delete(package = "zufft")
-pak::pak("pedrobtz/zufft")
-```
-
 You can check the result with `zufft_info()`. The SIMD width, in doubles,
 is 4 with AVX2, 8 with AVX-512, and 2 for a portable build:
 
