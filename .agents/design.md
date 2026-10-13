@@ -1,3 +1,1094 @@
-# zufft design
+# RFC 0026: `zufft`, a self-contained alternative to fftwtools, built on ducc0's BSD-licensed FFT
 
-What the package is for, its API, and the decisions behind it.
+- **Status:** Proposed. Merging this file adopts the design. Stage 0 records
+  the portability and build decisions in section 12 before feature work
+  begins; a failed go/no-go changes this RFC before implementation
+  continues.
+- **Date:** 2026-10-11; revised 2026-10-13 (goals restated around
+  fftwtools, API reshaped, Makevars specified, bit-for-bit promise
+  withdrawn; see section 18).
+- **Package:** `zufft` (repository skeleton created; no package of that name
+  was present in CRAN's package index or the `github.com/cran` mirror on
+  2026-10-11). Vendors the FFT subset of Martin Reinecke's ducc0 that
+  SciPy vendors: every file in the subset is "BSD-3-Clause OR
+  GPL-2.0-or-later", zufft elects BSD-3-Clause and takes MIT for its own
+  code. Nothing else of ducc0 is ever copied in (§8).
+- **Sources read.** fftwtools 0.9-11 from the `github.com/cran` mirror
+  (`DESCRIPTION`, `NAMESPACE`, `R/fftwtools.R`, `src/fftwtools.c`); the
+  `fftw` package's `NAMESPACE`. SciPy (`scipy/scipy`) default branch at
+  `ecee36d` (2026-10-09): `subprojects/duccfft/meson.build` (version
+  `0.41.1`, sources `mav.cc`, `string_utils.cc`, `threading.cc`),
+  `LICENSE.md`, the 19 files under `subprojects/duccfft/ducc0/`,
+  `tools/vendoring/vendor_duccfft.sh` (pins ducc commit `64f42ba`, keeps
+  only files whose SPDX line reads "BSD-3-Clause OR GPL-2.0-or-later"),
+  `scipy/fft/_duccfft/` (`meson.build`, `pyduccfft.cxx`, `helper.py`,
+  `realtransforms.py`) and `scipy/fft/_basic_backend.py`. Upstream ducc0
+  (GitHub mirror `mreineck/ducc`, branch `ducc0`) at `64f42ba`
+  (2026-09-11): `LICENSE` (GPL-2), `README.md`, `pyproject.toml`
+  (`0.41.1`, "GPLv2+"), `CMakeLists.txt` and `CMakeLists-C++.txt`
+  (compiler flags, §12.3), `src/ducc0/infra/simd.h`,
+  `src/ducc0/fft/fftnd_impl.h` (threading, vectorisation, plan cache),
+  `src/ducc0/fft/fft1d_impl.h`, `src/ducc0/infra/threading.{h,cc}`,
+  `src/ducc0/infra/error_handling.h`. 19 of the 73 C++ files under `src/`
+  carry the dual SPDX line; the 19 files SciPy vendors are byte-identical
+  to that commit, which postdates tag `ducc0_0_41_1` (`8e30567`,
+  2026-04-09) and differs from it in `fft.h`, `fftnd_impl.h`, `simd.h`,
+  `unity_roots.h`, `misc_utils.h` and `pswf_rokhlin.h`. R: `stats`
+  sources from the `wch/r-source` trunk mirror (`src/fft.c`,
+  `src/fourier.c`, `R/fft.R`, `man/fft.Rd`); `tools:::.check_packages`
+  (the compilation-flags check) from the installed R 4.6.1; `etc/Makeconf`
+  of that installation (macOS arm64); *Writing R Extensions* §1.2.1 and
+  the CRAN Repository Policy as of 2026-10-13. FIt-SNE
+  (`KlugerLab/FIt-SNE`) at `47ff14f`: `src/nbodyfft.cpp`. `zufast`'s design
+  (`pedrobtz/zufast` at `ccb56d5`). In the drafting session the three
+  `.cc` files and one translation unit instantiating `fft_inst_inc.h` for
+  `double` compiled with GCC 13.3 under `-std=c++17 -O2 -Wall -Wextra
+  -pedantic -fvisibility=hidden` with no warnings (26 s for that unit on
+  one core); the shared object (782 KB unstripped, 585 KB stripped)
+  imported no stdio, `abort` or `exit` symbol; results matched the
+  installed SciPy 1.18.1 (which vendors `8e30567`, not `64f42ba`) bit for
+  bit on the cases tried. Nothing has been built under R and nothing has
+  been benchmarked; section 12 says what Stage 0 must prove and section
+  11 what Stage 1 must measure.
+
+## 1. What zufft is
+
+`zufft` is an FFT package for R that needs no system library and carries
+no GPL code. It computes discrete Fourier transforms (complex,
+real-to-complex and complex-to-real) and discrete cosine and sine
+transforms of types I–IV, over any chosen axes of an R array, through
+the FFT code of ducc0, vendored into the package in the BSD-licensed
+subset that SciPy uses as the engine of `scipy.fft`.
+
+Its three goals, in order:
+
+1. **Replace fftwtools without FFTW.** Today, fast FFTs in R mean binding
+   the system FFTW3 library: `fftwtools`, `fftw` and `ravetools` all
+   declare `SystemRequirements: fftw3` and are GPL because FFTW is
+   GPL-2+. That means a system dependency to install, a licence a
+   downstream package inherits, and for CRAN binaries a dependence on
+   whatever FFTW the build machine had. zufft offers the same job with
+   `install.packages()` alone and a permissive licence.
+2. **Perform like fftwtools.** On the benchmark grid of §11, zufft is to
+   be within 1.5× of fftwtools everywhere and faster on the shapes where
+   ducc0's design wins (prime lengths, many simultaneous transforms,
+   threads). "Similar", not "faster everywhere": ducc0's own README says
+   its 1-D transforms are "somewhat slower than those provided by FFTW
+   (if FFTW's plan generation overhead is ignored)" and its multi-D
+   double-precision transforms "perform fairly similar to FFTW with
+   FFTW_MEASURE". fftwtools does not ignore planning: it plans with
+   `FFTW_ESTIMATE` and destroys the plan on every call (§3).
+3. **An API that is easy, familiar, and consistent.** Function names and
+   argument names a fftwtools user recognises (`_c2c`, `_r2c`, `_c2r`,
+   `inverse`, `n`), with the conventions of `scipy.fft` for everything
+   fftwtools does not have (axes, `norm`, DCT/DST, `workers`, length
+   helpers). Section 5 gives the surface and the two migration tables.
+
+Why ducc0 and not R's own code: `stats::fft()` and `mvfft()` are a C
+translation of Richard Singleton's 1979 mixed-radix routine. They are
+complex-only, so a real series costs a full complex transform; they have
+no DCT or DST; a prime length is quadratic and R's help warns it "may
+take a long time"; they run on one thread; they transform all dimensions
+of an array or the columns of a matrix, nothing in between; and "Long
+vectors are not supported". ducc0's FFT handles any length in O(n log n)
+(Bluestein passes for large prime factors), has true real transforms,
+DCT/DST I–IV, arbitrary axes, strided input, SIMD across simultaneous
+1-D transforms, an internal plan cache, and a thread pool.
+
+Users: anyone who today installs libfftw3 to get `fftwtools`; signal and
+image work on real data; people who validate a model across R and Python
+and need spectra, filters or DCT features to agree with `scipy.fft`; and
+family packages that need FFT convolutions from C, first `zutsne` (§3).
+
+The compatibility statement that governs the decisions below:
+
+> **The API follows `scipy.fft`'s conventions (axes, lengths, `norm`,
+> transform types, fast-length rules) and its results agree with
+> `scipy.fft` within the stated tolerance (§10) on every supported
+> platform. The vendored source is exactly the ducc0 subset at the commit
+> SciPy pins, so the two share one algorithm; bit-for-bit equality is not
+> promised, because zufft is compiled with ducc0's own floating-point
+> flags and the platform's SIMD width (§12.3), both of which change
+> rounding.**
+
+The previous revision promised bit-for-bit agreement with a locked
+reference build. That promise conflicts with goal 2: fused multiply-add
+contraction and vector width are exactly what the performance flags
+change. It is withdrawn (D14).
+
+## 2. Scope
+
+**In v0.1.0:**
+
+- Complex-to-complex, real-to-complex and complex-to-real transforms over
+  any subset of an array's axes, forward and inverse, with crop or
+  zero-pad lengths per axis.
+- DCT and DST types I–IV and their inverses, with `orthogonalize` as in
+  SciPy.
+- `norm = "backward"`, `"ortho"` or `"forward"` with SciPy's meaning, and
+  `norm = "none"` for FFTW's and `stats::fft()`'s unnormalised
+  convention (D12).
+- `workers`: threads per call, default one; `fft_workers()`,
+  `with_fft_workers()`, `local_fft_workers()`.
+- `fft_next_len()` and `fft_prev_len()` (ducc0's `good_size`, SciPy's
+  `next_fast_len` and `prev_fast_len`), frequency and shift helpers.
+- `fft_stats()` and `mvfft_stats()`: drop-in replacements for
+  `stats::fft()` and `mvfft()` (§5.3).
+- Long vectors.
+- A registered C table and a C header for `LinkingTo` (§7).
+- A "Migrating from fftwtools" vignette built from the table in §5.2.
+
+**Later, when asked:**
+
+- Hermitian transforms (`hfft`, `ihfft`) and the Hartley transforms
+  already in the vendored subset (`r2r_genuine_hartley` and siblings).
+- Single precision in the C table, for consumers that want it.
+- ducc0's `convolve_axis` (FFT-based resampling along an axis).
+- Plan or workspace objects, if profiling shows the internal cache (ten
+  entries per plan type, plans above 2^20 bytes never cached) is not
+  enough.
+- A run-time SIMD dispatch build for x86-64 (§12.3, open question 3).
+
+**Never:**
+
+- ducc0's non-uniform FFT, spherical harmonics or gridders: those files are
+  GPL-2.0-or-later only and are not in the subset.
+- Long double: R has no long double vectors.
+- Spectral estimation, windows and filter design: `stats::spectrum()`,
+  `gsignal` and others do these on top of an FFT.
+- GPU transforms.
+- FFTW itself, as a dependency or as an optional backend.
+
+## 3. Position among R's FFT packages and in the `zu*` family
+
+### 3.1 fftwtools, as the thing to replace
+
+fftwtools 0.9-11 (GPL >= 2, published 2021-03-01, `SystemRequirements:
+fftw3 (libfftw3-dev (deb), or fftw-devel (rpm))`) exports fifteen
+functions:
+
+| Family | Functions | Arguments |
+| --- | --- | --- |
+| 1-D | `fftw`, `fftw_r2c`, `fftw_c2r`, `fftw_c2c` | `data, inverse = 0, HermConj = 1, n = NULL` |
+| columns | `mvfftw`, `mvfftw_r2c`, `mvfftw_c2r`, `mvfftw_c2c` | as 1-D plus `fftplanopt = 0` |
+| 2-D | `fftw2d`, `fftw_r2c_2d`, `fftw_c2c_2d` | `data, inverse = 0, HermConj = 1` |
+| 3-D | `fftw3d`, `fftw_r2c_3d`, `fftw_c2c_3d` | as 2-D |
+| n-D | `fftw_c2c_xd` | `data, inverse = 0` |
+
+Its conventions, from the sources: `inverse` is `0`/`1` and the inverse
+is never scaled (no `1/n` anywhere, as in `stats::fft()`); `fftw()`
+sends non-complex input to `fftw_r2c()` and complex input to
+`fftw_c2c()`; `HermConj = 1` (the default) returns the full-length
+spectrum for real input and `HermConj = 0` the non-redundant `n %/% 2 +
+1` values; `fftw_c2r(data, HermConj = 0, n)` needs the original length
+`n` because the half spectrum does not determine parity. In C, every
+1-D, 2-D, 3-D and n-D call creates a plan with `FFTW_ESTIMATE`, executes
+it and destroys it; nothing is cached; the column-wise functions use
+`FFTW_MEASURE` only when `fftplanopt = 1`. R's vectors are handed to
+FFTW directly without copying. For `mvfftw_r2c()`, `fftw_r2c_2d()` and
+`fftw_r2c_3d()` with `HermConj = 1`, the redundant conjugate half is
+reconstructed in R code after the C call.
+
+These facts shape §5 (what to be familiar with), §11 (where ducc0's plan
+cache and C-side Hermitian fill are structural advantages, and where
+FFTW's codelets are) and §12.3 (the system FFTW that fftwtools links
+selects AVX2 codelets at run time, while a CRAN-portable zufft is
+compiled for SSE2 on x86-64).
+
+### 3.2 The others
+
+- `stats::fft()`, `mvfft()`, `nextn()`, `convolve()`: §1.
+- `fftw` 1.0-9 (GPL-2): `planFFT`, `FFT`, `IFFT`, `planDCT`, `DCT`,
+  `IDCT` on system FFTW3; the only package with a DCT.
+- `ravetools` 0.3.2 (GPL >= 2): also on system FFTW3.
+- `gsignal` 0.3-7 (GPL-3) and `pracma` 2.4.6 (GPL >= 3): signal-processing
+  functions in the MATLAB style; which FFT they call underneath was not
+  checked.
+- `torch` (MIT): FFTs through LibTorch, a very large dependency.
+- No R binding of ducc0 or of pocketfft was found by a web search.
+
+### 3.3 In the `zu*` family
+
+| | zufft |
+| --- | --- |
+| Role | provider (C table, `LinkingTo` header); R API |
+| R prefix | `fft_`; `fft_stats()`, `mvfft_stats()` for compatibility |
+| Info function | `zufft_info()` |
+| Root condition class | `zufft_error` |
+| Public C prefix | `zufft_` for the table and header; internal `zff_` |
+| From C | `R_GetCCallable("zufft", "zufft_api_v1")` |
+| Hides symbols | yes (R3; `$(CXX_VISIBILITY)` plus a linker export list, §12.2) |
+| Vendored code | ducc0 FFT subset as SciPy vendors it, 17 files |
+| `Depends: R` | 4.1 (R2) |
+| Language | en-GB (R2) |
+
+- **`zufast`** cannot hold an FFT. Its design makes it header-only C99 and
+  lists "a registered function table or a static archive" among its
+  permanent non-goals; ducc0 is C++17 with three compiled sources and a
+  thread pool. zufast's argument for avoiding a table (an indirect call
+  is the whole cost of a tiny primitive) does not apply to an O(n log n)
+  transform.
+- **`zutsne`** (RFC 0028) is the first consumer of the C table. FIt-SNE's
+  `nbodyfft.cpp` uses FFTW for exactly three shapes: a 2-D real-to-complex
+  and complex-to-real pair on an `n × n` grid (once per embedding term per
+  iteration) and an in-place 1-D complex pair of length
+  `2 × interpolation points`, all unnormalised and planned with
+  `FFTW_ESTIMATE`. The table's `r2c`, `c2r` and `c2c` members (§7) cover
+  all three; FFTW is GPL-2+, so this also keeps zutsne free of it.
+- No other family package is required to adopt zufft.
+
+## 4. Architecture
+
+```text
+R array (double / integer / logical / complex), dims, axes, n, norm
+   |
+   v
+R layer: argument checks, axes (1-based), crop or zero-pad, norm and
+         workers resolved, output dims computed
+   |
+   v
+C glue (src/zff_*.c): R vectors in, data pointers, shape and strides
+         (column-major, in elements), output allocated with R's allocator
+   |
+   v
+C++ shim (src/zff_shim.cpp): extern "C", noexcept; builds ducc0
+         cfmav/vfmav views, computes the scale as pyduccfft does, calls
+         c2c / r2c / c2r / dct / dst, catches every exception into a
+         status code and a thread-local message
+   |
+   v
+ducc0 FFT (vendored, C++17), threads from zufft's pool (§6.5)
+   |
+   v
+R result: complex or double array with the transformed dims
+```
+
+- zufft's own code is C; the shim is the only C++ it writes. No C++ type
+  or exception crosses into C or R, and R's API is never called from the
+  shim or from a pool thread, so no `longjmp` passes through C++ frames.
+- R's column-major arrays are passed as strided views; nothing is
+  transposed. An R axis `k` is axis `k - 1` to ducc0.
+- The same shim functions serve the R glue and the C table (§7), so the
+  two paths cannot drift.
+- The R layer does no arithmetic on the data: crop and pad are done by
+  the C glue into the output buffer, and the Hermitian fill for
+  `fft_c2c()` on real input is done in C (§6.1). fftwtools does the
+  latter in R for its 2-D, 3-D and column-wise real transforms, which is
+  part of the performance gap §11 expects to find there.
+
+## 5. Public R API (complete v0.1.0 surface)
+
+### 5.1 Native
+
+```r
+# discrete Fourier transforms
+fft_c2c(x, inverse = FALSE, n = NULL, axes = NULL,
+        norm = c("backward", "ortho", "forward", "none"), workers = NULL)
+fft_r2c(x, n = NULL, axes = NULL,
+        norm = c("backward", "ortho", "forward", "none"), workers = NULL)
+fft_c2r(x, n = NULL, axes = NULL,
+        norm = c("backward", "ortho", "forward", "none"), workers = NULL)
+
+# real trigonometric transforms
+fft_dct(x, type = 2L, inverse = FALSE, n = NULL, axes = NULL,
+        norm = c("backward", "ortho", "forward", "none"),
+        orthogonalize = NULL, workers = NULL)
+fft_dst(x, type = 2L, inverse = FALSE, n = NULL, axes = NULL,
+        norm = c("backward", "ortho", "forward", "none"),
+        orthogonalize = NULL, workers = NULL)
+
+# lengths, frequencies, shifts
+fft_next_len(n, real = FALSE)     # smallest fast length >= n
+fft_prev_len(n, real = FALSE)     # largest fast length <= n
+fft_freq(n, d = 1)                # sample frequencies (fftfreq)
+fft_rfreq(n, d = 1)               # rfftfreq
+fft_shift(x, axes = NULL)         # fftshift
+fft_ishift(x, axes = NULL)        # ifftshift
+
+# threads
+fft_workers(n = NULL)             # get, or set and return the old value
+with_fft_workers(n, code)         # scipy.fft.set_workers() as a context
+local_fft_workers(n, .local_envir = parent.frame())
+
+zufft_info()                      # ducc0 commit, SciPy commit, SIMD width
+                                  # and backend, FMA contraction, threading
+                                  # mode, pool size, complex path (§12.2)
+```
+
+**Argument order.** `x` first; `inverse` second where it exists, so that
+`fft_c2c(x, TRUE)` reads like `fft(z, TRUE)` and `fftw(data, 1)`; then
+`n`, then `axes`, as SciPy's `fft(x, n, axis)`; everything after that is
+meant to be named. `fft_c2r(x, n)` puts the one argument an inverse real
+transform usually needs where fftwtools users look for it.
+
+**`axes = NULL`** means every dimension in ascending order (a plain vector
+has one), as `stats::fft()` does for arrays. Otherwise `axes` contains
+unique, 1-based, exactly representable whole numbers in
+`1..length(dim(x))`; an empty vector and duplicate axes are errors. Axis
+order is significant for real transforms: the last listed axis is the
+half-complex axis. Column-wise transforms, fftwtools' `mvfftw*` and R's
+`mvfft()`, are `axes = 1` on a matrix.
+
+**`n = NULL`** uses the input lengths. Otherwise `n` contains one positive,
+exactly representable whole number per transformed axis, with no
+recycling; when `axes = NULL` it must therefore contain one value per
+input dimension. This deliberately avoids SciPy's rule that a short `s`
+selects trailing axes. Shape products and byte counts are checked for
+overflow before any allocation. `n` combines SciPy's 1-D `n` and n-D `s`.
+
+**`inverse`** is logical. fftwtools' `inverse = 0`/`1` works unchanged
+because `0` and `1` coerce; any other number is an error rather than
+"non-zero means inverse".
+
+**`norm`** is §6.3. The default is SciPy's `"backward"` (unscaled forward,
+`1/N` inverse), so that `fft_c2c(fft_c2c(x), inverse = TRUE)` returns
+`x`. fftwtools and `stats::fft()` scale neither direction; that is
+`norm = "none"`, and it is the only `norm` under which an inverse here
+and an inverse there agree without a factor.
+
+### 5.2 Coming from fftwtools
+
+Real input to `fft_c2c()` yields the full Hermitian spectrum, as
+`fftw(real)` and `fftw_r2c(real, HermConj = 1)` do; `fft_r2c()` yields
+the non-redundant half, as `HermConj = 0` does. Every row below returns
+the same values for the same input, with `norm = "none"` wherever
+fftwtools would run an inverse.
+
+| fftwtools | zufft |
+| --- | --- |
+| `fftw(x)` (real or complex) | `fft_c2c(x)` |
+| `fftw(x, inverse = 1)` | `fft_c2c(x, inverse = TRUE, norm = "none")` |
+| `fftw(x, HermConj = 0)` (real) | `fft_r2c(x)` |
+| `fftw(X, inverse = 1, HermConj = 0, n = n)` | `fft_c2r(X, n = n, norm = "none")` |
+| `fftw_r2c(x)` / `fftw_r2c(x, HermConj = 0)` | `fft_c2c(x)` / `fft_r2c(x)` |
+| `fftw_c2r(X, HermConj = 0, n = n)` | `fft_c2r(X, n = n, norm = "none")` |
+| `fftw_c2r(X)` (full spectrum) | `Re(fft_c2c(X, inverse = TRUE, norm = "none"))` |
+| `fftw_c2c(x, inverse = i)` | `fft_c2c(x, inverse = i, norm = "none")` |
+| `mvfftw(x)`, `mvfftw_c2c(x)` | `fft_c2c(x, axes = 1)` |
+| `mvfftw_r2c(x, HermConj = 0)` | `fft_r2c(x, axes = 1)` |
+| `mvfftw_c2r(X, HermConj = 0, n = n)` | `fft_c2r(X, n = n, axes = 1, norm = "none")` |
+| `fftw2d(x)`, `fftw_c2c_2d(x)`, `fftw3d(x)`, `fftw_c2c_xd(x)` | `fft_c2c(x)` |
+| `fftw_r2c_2d(x, HermConj = 0)`, `fftw_r2c_3d(x, HermConj = 0)` | `fft_r2c(x)` (last axis halved) |
+| `mvfftw(..., fftplanopt = 1)` | nothing to do: plans are cached |
+| (none) | `workers`, `norm`, `n` padding, `axes`, DCT/DST, helpers |
+
+What a migrating package gains: no `SystemRequirements`, no GPL, every
+length in O(n log n), threads, long vectors, and `fft_c2r()` that never
+destroys its input. What it loses: nothing in the table above. The
+vignette carries this table and a worked example per row.
+
+### 5.3 `stats` compatibility
+
+`fft_stats(z, inverse = FALSE)` and `mvfft_stats(z, inverse = FALSE)` have
+`stats::fft()` and `mvfft()`'s signatures, argument checks, result shapes,
+attributes and unnormalised inverse, including returning inputs of length
+0 and 1 unchanged as `fourier.c` does. Values agree to rounding, not bit
+for bit (§10). A package moves by replacing `fft(` with
+`zufft::fft_stats(` and adding the `Imports` entry; it gains every length
+in O(n log n) and long vectors, and `fft_stats()` on a real vector uses
+the real transform internally. These are thin wrappers over
+`fft_c2c(..., norm = "none")`.
+
+### 5.4 Coming from scipy.fft
+
+| SciPy | zufft |
+| --- | --- |
+| `fft(x, n, axis)` | `fft_c2c(x, n = n, axes = axis + 1)` |
+| `ifft` | `fft_c2c(..., inverse = TRUE)` |
+| `fft2`, `fftn(x, s, axes)` | `fft_c2c(x, n = s, axes = axes + 1)` |
+| `rfft`, `rfft2`, `rfftn` | `fft_r2c()` |
+| `irfft`, `irfft2`, `irfftn` | `fft_c2r()` |
+| `dct`, `dctn` | `fft_dct()` |
+| `idct`, `idctn` | `fft_dct(..., inverse = TRUE)` |
+| `dst`, `dstn`, `idst`, `idstn` | `fft_dst()` |
+| `fftfreq`, `rfftfreq`, `fftshift`, `ifftshift` | `fft_freq()`, `fft_rfreq()`, `fft_shift()`, `fft_ishift()` |
+| `next_fast_len`, `prev_fast_len` | `fft_next_len()`, `fft_prev_len()` |
+| `get_workers`, `set_workers` (context) | `fft_workers()`, `with_fft_workers()` |
+| `hfft`, `ihfft`, `fht`, backends, `overwrite_x`, `plan` | not offered |
+
+SciPy's default `axis = -1` is the last axis; zufft's default is all
+axes, so a 1-D SciPy call on a matrix is `axes = length(dim(x))` here. An
+array moved between R and NumPy by `reticulate` keeps its shape, so axis
+`k` in NumPy (0-based) is axis `k + 1` in R.
+
+## 6. Semantics
+
+### 6.1 Input and output types
+
+- Double, integer and logical inputs are real; integer and logical are
+  coerced to double. Complex inputs are complex. Anything else is
+  `zufft_invalid_argument`.
+- `fft_c2c()` on real input does what `pyduccfft.cxx`'s `c2c_sym_internal`
+  does: a real-to-complex transform, then the Hermitian half filled in by
+  conjugation, in C. This halves the work and is what makes
+  `fft_c2c(<double>)` agree with `scipy.fft.fft(<float64>)` and with
+  `fftw(<double>)`.
+- `fft_r2c()` halves the last axis listed in `axes` to `n %/% 2 + 1`;
+  `fft_c2r()` takes that shape and restores `n`, by default
+  `2 * (m - 1)` on that axis, as SciPy does; an odd original length must
+  be given, as in fftwtools.
+- `fft_dct()` and `fft_dst()` on complex input transform the real and
+  imaginary parts separately. For parity with the selected SciPy commit,
+  explicit `orthogonalize` is ignored for complex input and its effective
+  value is `norm == "ortho"`; SciPy's `realtransforms.py` omits that
+  argument on its two component calls. This is documented and covered by
+  a regression test. If SciPy changes it, zufft changes only with a
+  re-vendoring decision.
+- Results keep `dim`; `dimnames` survive on axes that were not
+  transformed and are dropped on axes that were; `names` are dropped.
+- Inputs are never modified. SciPy's `overwrite_x` and `plan` arguments
+  are not offered.
+
+### 6.2 Lengths
+
+- `n` crops or zero-pads each transformed axis before the transform, as
+  SciPy does. A length below 1 (or below 2 for DCT-I) is
+  `zufft_length_error`, as SciPy raises `ValueError`.
+- Long vectors are supported: lengths are `R_xlen_t` in R and `size_t` in
+  ducc0, and no `int` sits between them. R array extents remain limited by
+  the integer `dim` attribute even when their product is a long-vector
+  length; a plain vector's extent comes from `XLENGTH()`. Numeric length
+  arguments above 2^53 are rejected because R cannot represent them
+  exactly.
+- `fft_next_len(n, real)` is ducc0's `good_size_complex` (factors 2, 3, 5,
+  7, 11) or `good_size_real` (2, 3, 5); `fft_prev_len()` is the same
+  search downwards, ported from `pyduccfft.cxx`, which keeps it outside
+  ducc0. In the drafting session `good_size_complex` gave 1024 for 1009
+  and 1 000 000 for 999 983, as `scipy.fft.next_fast_len` does.
+
+### 6.3 Normalisation
+
+`norm` has SciPy's meaning: `"backward"` scales the inverse by `1/N`,
+`"forward"` the forward transform, `"ortho"` both by `1/sqrt(N)`, where
+`N` is the product of the transformed lengths (for DCT-I `2(n - 1)`, for
+DST-I `2(n + 1)`, otherwise `2n`, per axis). `"none"` scales neither
+direction: it is FFTW's convention, fftwtools' and `stats::fft()`'s, and
+for forward transforms it is identical to `"backward"`. The scale is
+computed as `pyduccfft.cxx` computes it, in `long double` and then
+rounded to `double`, and passed to ducc0 as its `fct` argument; for
+`"none"` the factor is exactly 1 and ducc0 skips the multiplication.
+`orthogonalize = NULL` means `norm == "ortho"`, as in SciPy. `inverse =
+TRUE` swaps DCT and DST types II and III and the direction of the
+normalisation, as SciPy's `_r2r` does; under `"none"` only the type swap
+happens.
+
+### 6.4 Non-finite values
+
+zufft does not inspect values. `NA`, `NaN` and infinities propagate
+through the arithmetic in an unspecified pattern; `NA` becomes `NaN` in
+the output, not `NA_real_`. `stats::fft()` behaves the same way
+(unverified in detail).
+
+### 6.5 Threads
+
+- `workers = NULL` takes `fft_workers()`, initially `1`, which is SciPy's
+  default and fftwtools' only mode. A positive value asks for that many
+  threads; `-1` means all available cores and `-k` all but `k - 1`, as in
+  SciPy; zero is an error. Requests are capped at the available cores
+  and, when `_R_CHECK_LIMIT_CORES_` is set, at 2 (CRAN's policy: never
+  more than two simultaneously).
+- `with_fft_workers(n, code)` and `local_fft_workers(n)` set the default
+  for a block or a frame and restore the old value, in the `withr` style
+  (implemented without depending on `withr`).
+- What threads can do, from `fftnd_impl.h`: `general_nd` splits the
+  1-D lines of a multi-dimensional transform statically across threads;
+  `thread_count` returns 1 when the array has fewer than 32 768 elements
+  or when `nthreads == 1`, and never exceeds the number of lines. A
+  contiguous 1-D vector takes a shortcut (`exec_simple`) that runs the
+  plan on one thread, except that a 1-D complex transform of length at
+  least 131 072 whose length factors as `f1 × f2` with `f1 >= 16` is
+  reshaped to 2-D (Bailey's four-step) and transformed with both SIMD and
+  threads. A 1-D real transform never uses threads. These are the
+  shapes §11 measures.
+- ducc0 is built with `DUCC0_CUSTOM_LOWLEVEL_THREADING`, and zufft
+  supplies the pool. Upstream's default pool was rejected for three
+  measured reasons: it is created on the first transform with one worker
+  per hardware thread minus one whatever `nthreads` is requested (on the
+  two-core drafting machine a single-threaded call started a worker
+  thread); its size comes from `DUCC0_NUM_THREADS` or `OMP_NUM_THREADS`,
+  read once; and it pins threads (`pthread_setaffinity_np`). zufft does
+  not read those variables and never pins threads.
+- zufft's pool starts no thread until a call asks for more than one,
+  grows to the largest request, and never shrinks during a session. A
+  process-wide entry gate serializes transform calls in v0.1.0. This makes
+  pool growth, plan-cache use, and package unload deterministic and makes
+  C-table calls safe from arbitrary caller threads, at the cost of no
+  parallelism between independent top-level transforms. Internal workers
+  still execute one transform in parallel. Removing this gate requires a
+  dedicated concurrency design and stress tests.
+- Fork safety is explicit rather than inferred from a process-id check.
+  On POSIX, once the pool exists zufft registers `pthread_atfork` handlers:
+  the prepare handler takes the entry gate and quiesces the pool, the parent
+  releases it and rebuilds lazily, and the child marks the inherited pool
+  abandoned and rebuilds lazily without touching mutexes owned by vanished
+  threads. Stage 0 stress-tests `parallel::mclapply()` both before and after
+  pool creation. If this cannot be made reliable on a supported POSIX leg,
+  persistent multithreading is disabled on that leg; a process-id check by
+  itself is not accepted as fork safety.
+- `R_unload_zufft` takes the entry gate and joins every worker before the
+  shared library can be unloaded. Calls through a cached C table after the
+  provider unloads remain invalid, as with any `R_GetCCallable` API.
+- A transform is not interruptible. Pool threads never call R.
+
+## 7. The C table and the `LinkingTo` header
+
+**Decision.** zufft is a provider through a registered C table, with a C
+header in `inst/include/zufft.h` for consumers that declare
+`LinkingTo: zufft` and `Imports: zufft`. It does not export ducc0's
+headers through `LinkingTo`.
+
+**Why not header-only ducc0 through `LinkingTo`:**
+
+1. ducc0's FFT is templates in headers, but `threading.cc`, `mav.cc` and
+   `string_utils.cc` must be compiled. Every consumer would compile them
+   again and get its own thread pool and its own plan cache.
+2. It forces C++17 and ducc0's types on the consumer. zutsne is C++, but
+   a C consumer could not use it at all.
+3. Each consumer would carry its own copy at its own commit, and its own
+   compile flags, so §1's compatibility statement would hold only for
+   zufft.
+4. Each consumer would pay the compile time (§12.2) again.
+5. The table's cost is one indirect call per transform, which is
+   invisible against the transform itself.
+
+A static archive was rejected for the reasons zufast's design gives: it
+needs a `configure` script in every consumer, and the family uses it only
+for C libraries that cannot be retargeted.
+
+```c
+/* inst/include/zufft.h */
+typedef struct {
+  int              ndim;
+  const size_t    *shape;   /* extents */
+  const ptrdiff_t *stride;  /* logical elements; NULL = column-major dense */
+} zufft_layout;
+
+typedef enum {
+  ZUFFT_OK = 0,
+  ZUFFT_EINVAL = 1,
+  ZUFFT_ESHAPE = 2,
+  ZUFFT_EOVERFLOW = 3,
+  ZUFFT_ENOMEM = 4,
+  ZUFFT_ETHREAD = 5,
+  ZUFFT_EENGINE = 6,
+  ZUFFT_EINTERNAL = 7
+} zufft_status;
+
+typedef struct {
+  size_t struct_size;
+  unsigned int abi_version;  /* exactly 1 for this layout */
+  unsigned int flags;        /* reserved feature bits; zero in v1 */
+  /* Complex buffers contain pairs of doubles in re, im order. */
+  int (*c2c)(const zufft_layout *lin, const double *in,
+             const zufft_layout *lout, double *out,
+             int naxes, const int *axes, int forward,
+             double fct, int nthreads);
+  int (*r2c)(const zufft_layout *lin, const double *in,
+             const zufft_layout *lout, double *out,
+             int naxes, const int *axes, int forward,
+             double fct, int nthreads);
+  int (*c2r)(const zufft_layout *lin, const double *in,
+             const zufft_layout *lout, double *out,
+             int naxes, const int *axes, int forward,
+             double fct, int nthreads);
+  int (*dct)(const zufft_layout *lin, const double *in,
+             const zufft_layout *lout, double *out,
+             int naxes, const int *axes, int type,
+             double fct, int ortho, int nthreads);
+  int (*dst)(const zufft_layout *lin, const double *in,
+             const zufft_layout *lout, double *out,
+             int naxes, const int *axes, int type,
+             double fct, int ortho, int nthreads);
+  size_t (*good_size)(size_t n, int real);
+  const char *(*message)(void);  /* this thread's last failure */
+  /* … appended over time … */
+} zufft_api;
+
+/* zufft registers a getter function, not a data pointer, as
+   R_RegisterCCallable("zufft", "zufft_api_v1", getter). */
+static inline const zufft_api *zufft_api_get(void);
+```
+
+- `R_RegisterCCallable` stores a `DL_FUNC`, so the registered symbol is a
+  function returning `const zufft_api *`; casting a table's data address to
+  `DL_FUNC` is not permitted. `zufft_api_get()` resolves that function with
+  `R_GetCCallable`, calls it, then verifies `abi_version` and `struct_size`.
+  Resolution uses R and must happen on the R thread during consumer
+  initialization. Cached table members themselves never call R.
+- Axes are 0-based in C. They must be unique and in range. Shapes must be
+  nonzero, address calculations must not overflow `ptrdiff_t`, and writable
+  layouts must not overlap themselves. Negative strides are not supported in
+  v1. For real buffers, a stride unit is one double; for complex buffers it
+  is one real/imag pair. NULL data, shapes, axes and inconsistent input/output
+  shapes return a stable status code rather than reaching ducc0 assertions.
+- `fct` is the caller's scale (1 for FFTW's unnormalised convention); the
+  header provides a typed normalization enum and an overflow-checked helper
+  that computes §6.3's factor in `long double` before conversion to `double`.
+- `c2c` may run in place when `in == out` with identical layouts, which
+  is what FIt-SNE's 1-D pair does; `r2c` and `c2r` must not overlap, and
+  `c2r` leaves its input unchanged (FFTW's destroys it).
+- `nthreads` is as `workers` in §6.5, with `0` meaning the current
+  `fft_workers()` value, held in an atomic so pool threads and consumer
+  threads can read it without R.
+- Return codes are the stable `zufft_status` values above. After a failure,
+  `message()` returns a pointer to this caller thread's diagnostic; the
+  caller must copy it before the next zufft call on that thread. A successful
+  call clears the diagnostic. Members never call R and are callable from any
+  thread; section 6.5 defines v1's serialization.
+- The table follows `zuxml`'s versioning rules: members are appended,
+  `struct_size` lets a consumer check that a member exists, and a layout
+  change bumps the registered name to `zufft_api_v2`.
+
+## 8. The vendored library and its licence
+
+"Just vendor ducc0, carefully" means: exactly the files SciPy's SPDX
+filter keeps, from exactly the commit SciPy pins, with a script that can
+prove it, and a licence trail CRAN can read.
+
+- **What.** 17 of SciPy's 19 files, into `src/ducc0/` with SciPy's paths:
+  `fft/fft.h`, `fft/fft1d_impl.h`, `fft/fftnd_impl.h`,
+  `fft/fft_inst_inc.h`, `infra/aligned_array.h`, `infra/error_handling.h`,
+  `infra/mav.h`, `infra/mav.cc`, `infra/misc_utils.h`, `infra/simd.h`,
+  `infra/string_utils.h`, `infra/string_utils.cc`, `infra/threading.h`,
+  `infra/threading.cc`, `infra/useful_macros.h`, `math/cmplx.h`,
+  `math/unity_roots.h`. Left out: `bindings/pybind_utils.h` (Python) and
+  `math/pswf_rokhlin.h` (nothing in the FFT includes it). The include
+  graph was checked with `g++ -MM`.
+- **From where.** From ducc0 at the commit SciPy's
+  `tools/vendoring/vendor_duccfft.sh` pins (`64f42ba` today), with the same
+  SPDX filter. `tools/vendor-ducc` then checks byte-identity with SciPy's
+  `subprojects/duccfft` at a named SciPy commit, and **fails if any file
+  lacks the dual-licence SPDX line or is not in the list above**. It
+  records both commits and each file's SHA-256 in `src/ducc0/VERSION`;
+  `zufft_info()` reports them. A CI job re-runs the SPDX check on every
+  pull request so that no later edit can slip a GPL-only file in. The
+  meson version string (`0.41.1`) is not used as an identity: the pinned
+  commit postdates that tag and differs from it in six of the files.
+- **Licence.** Each file is "BSD-3-Clause OR GPL-2.0-or-later"; zufft
+  elects BSD-3-Clause, which is compatible with its own MIT licence and
+  imposes nothing on packages that import zufft. The full ducc0
+  repository is GPL-2.0-or-later (its `LICENSE`, `pyproject.toml`
+  classifier and README: "All source code in this package is released
+  under the terms of the GNU General Public License v2 or later. Some
+  files (those constituting the FFT component and its internal
+  dependencies) are also licensed under the 3-clause BSD license"), so
+  nothing outside the SPDX-filtered subset may ever be copied in, and
+  §2's "Never" list follows from this. The notice in `fft1d_impl.h` for
+  "the odd-sized DCT-IV transforms" (copyright Matteo Frigo and MIT, the
+  FFTW authors) sits above the same dual SPDX line; that upstream may
+  relicense that code under BSD is upstream's statement and was not
+  examined further.
+- **In the package.** `DESCRIPTION` lists Martin Reinecke as `ctb`, Peter Bell
+  as `ctb` and `cph`, and the Max-Planck-Society as `cph` in `Authors@R`, as the
+  CRAN policy prefers for copied code; a `Copyright:` field points to
+  `inst/COPYRIGHTS`, which carries the BSD-3 text with the
+  Max-Planck-Society and Peter Bell notices and the Frigo/MIT notice. The
+  package `License` stays `MIT + file LICENSE`.
+- **Patches.** None to upstream files. zufft supplies
+  `src/ducc0_custom_lowlevel_threading.h` (`Mutex`, `LockGuard`,
+  `UniqueLock`, `CondVar` as the standard library's) and its pool
+  (`set_active_pool()`, `get_active_pool()`). The header must also
+  declare `in_parallel_region`: at `64f42ba`, `threading.cc` refers to it
+  outside the threading-mode blocks, so custom mode fails to compile
+  without it. The drafting session confirmed both the failure and the
+  workaround (`inline thread_local bool in_parallel_region`), and results
+  in custom mode were bit-identical to the default mode.
+- **Defines.** `DUCC0_CUSTOM_LOWLEVEL_THREADING`. Not `DUCC0_NO_FFT_CACHE`:
+  the cache is mutex-guarded and SciPy keeps it, and it is one of the two
+  structural advantages over fftwtools' plan-per-call (§11). Not
+  `DUCC0_NO_SIMD`. R adds `-DNDEBUG` itself; ducc0's checks use its own
+  `MR_assert`, which throws and is unaffected.
+- **Instantiation.** One translation unit per transform family
+  (`c2c`; `r2c` and `c2r`; `dct` and `dst`) includes `fft.h` and
+  `fftnd_impl.h` and instantiates for `double` only, using
+  `fft_inst_inc.h` inside `ducc0::detail_fft` with `T = double` (the form
+  the drafting build used), so `make -j` can compile them in parallel.
+- **Updates.** zufft re-vendors when SciPy re-vendors, to the same
+  commit, after the full test suite, regenerated SciPy fixtures (§10) and
+  a benchmark run (§11).
+
+## 9. Errors
+
+Every condition inherits `zufft_error`: `zufft_invalid_argument` (types,
+axes, `norm`, `type`, `workers`), `zufft_length_error` (a transformed
+length below the minimum, or an output beyond R's vector limits),
+`zufft_engine_error` (a ducc0 exception, with its message),
+`zufft_thread_error` (the pool could not start a thread),
+`zufft_internal_error`.
+
+## 10. Testing
+
+- **SciPy fixtures.** `tools/make-scipy-reference.py` runs offline in a
+  locked environment built from SciPy commit `ecee36d`, not from a nominal
+  release version. It covers every transform and type, every `norm`,
+  `orthogonalize`, lengths 1–64 and selected composite, prime and large
+  lengths, 2-D and 3-D arrays over each ordered axis subset, crop and pad,
+  odd and even `c2r` lengths, and validation failures. It stores inputs and
+  outputs as little-endian doubles in `tests/testthat/fixtures/` (budget
+  1 MB), with the SciPy and ducc0 commits, compiler, flags and platform in
+  a manifest. Fixture regeneration fails if SciPy no longer vendors the
+  recorded ducc0 commit.
+- **Numerical criterion.** Every CI leg requires
+  `max(Mod(actual - expected)) <= 32 * .Machine$double.eps *
+  max(1, log2(N)) * max(1, max(Mod(expected)))`, where `N` is the effective
+  transformed size from §6.3. Any change to that formula is a design
+  change, not a test tweak. There is no bit-exact job (D14); the
+  observation that ducc0 `64f42ba` and SciPy 1.18.1 agreed bit for bit in
+  the drafting session is recorded as a curiosity, not a requirement.
+- **fftwtools as oracle.** `fftwtools` is in `Suggests`; when it is
+  installed (the CI legs install libfftw3 for it), every row of §5.2's
+  table is executed on both sides and compared within the tolerance,
+  including `norm = "none"` inverses, `HermConj` both ways and odd
+  `c2r` lengths. On CRAN the tests skip if fftwtools is absent.
+- **`stats::fft()` as oracle.** `fft_c2c()` and `fft_stats()` agree with
+  `stats::fft()` and `mvfft()` within that tolerance for lengths 1–1024
+  and random arrays; `fft_stats()` reproduces their result structure and
+  attributes exactly, and their help-page examples.
+- **Direct DFT.** For `n <= 64`, every transform against an O(n²)
+  evaluation in R of the defining sum.
+- **Identities.** Inverse round trips for every transform and `norm`
+  (for `"none"`, up to the factor `N`); Parseval (`sum(abs(x)^2) ==
+  sum(abs(X)^2) / N` under `"backward"` and `"none"`, equality under
+  `"ortho"`); linearity; the shift theorem; Hermitian symmetry of
+  `fft_c2c()` on real input; DCT-II and DCT-III as an inverse pair; DCT-II
+  equal to an FFT of the even extension.
+- **Threads.** Results with `workers = 1` and `workers = 2` are identical
+  (expected, since ducc0 splits independent 1-D transforms; a difference
+  is reported, not hidden); concurrent C-table callers; repeated pool
+  creation and package unload; and forked children before and after pool
+  creation on every POSIX CI leg.
+- **C table.** A fixture package performs FIt-SNE's 2-D convolution
+  through `r2c`, a Hadamard product and `c2r`, and compares it with a
+  direct convolution. It also verifies getter resolution, `struct_size`,
+  status constants, malformed layouts, overflow rejection, exact in-place
+  `c2c`, forbidden overlap, and thread-local diagnostics.
+- **Long vectors.** A job that transforms more than 2^31 elements runs
+  as a manual release gate on a runner with enough memory (about 50 GB for
+  a real input, output and workspace). If that gate is unavailable, long
+  vectors move out of v0.1.0 rather than shipping as an unverified claim.
+- **Native safety.** Stage 0 and release candidates run the shim and C-table
+  tests under AddressSanitizer and UndefinedBehaviorSanitizer, and at least
+  one supported compiler builds and tests with LTO. Valgrind covers the R
+  boundary on Linux. The zero-copy complex path, if enabled, must pass all
+  three configurations.
+- **Build flags.** A CI leg runs `R CMD check --as-cran` and fails on the
+  "non-portable flag(s)" NOTE (§12.3), so that no flag can be added to
+  `Makevars` without a design change.
+- `zufuzz` targets for shapes, strides and axes through the C table. CRAN
+  suite under 15 s.
+
+## 11. Performance targets
+
+Performance is goal 2 of §1, so it is measured from Stage 1, not at the
+end. `tools/run-benchmarks` uses `bench::mark()` (median of enough
+iterations for a stable estimate, warm plan cache; the first call of each
+shape is timed separately as "cold") on the same machine, same session,
+against `stats::fft()`, `fftwtools` and, where installed, `fftw`. The
+system FFTW's configuration (`fftw_version`, SIMD codelets) and zufft's
+`zufft_info()` are recorded with every run, because the system FFTW picks
+AVX2 codelets at run time while CRAN-portable zufft is SSE2 on x86-64
+(§12.3). Results go in `bench/RESULTS.md` with the hardware, and this
+section is updated with the measured numbers. None has been measured yet.
+
+**Grid.** 1-D complex and real, lengths 2^10, 2^16, 2^20, 2^22; `3^7 ×
+5^3`, `1e5`, `1e6`; primes 10 007, 100 003, 1 000 003. Column-wise: 2^10
+× 1024 and 2^14 × 64 (`mvfftw` shapes). 2-D real and complex: 512², 2048²
+(FIt-SNE's shape). 3-D complex: 128³. Each with `workers = 1`, and the
+2-D and column-wise cases also with `workers = 2`.
+
+**Targets (`workers = 1` unless stated):**
+
+| Case | Target |
+| --- | --- |
+| Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× |
+| Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) |
+| Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) |
+| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× |
+| `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× |
+| `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× |
+
+**Where to expect a gap, and what to do about it.** The weakest cases
+are single 1-D transforms below the four-step threshold (§6.5): ducc0
+runs them scalar, FFTW's codelets are SIMD, and ducc0's README concedes
+the 1-D comparison. fftwtools gives some of that back by planning on
+every call; whether the net stays within 1.5× is the first measurement
+Stage 1 makes. If it does not, the options in order are: (a) check that
+the plan cache is hit and the shim adds no copy; (b) the opt-in native
+build (§12.3) to confirm the gap is SIMD width; (c) the run-time dispatch
+build of open question 3. A missed target is reported in this section,
+not hidden by relaxing it.
+
+## 12. Build, portability and CRAN
+
+### 12.1 Threads on Windows: the go/no-go
+
+SciPy builds ducc0 on MinGW-w64 with `DUCC0_NO_LOWLEVEL_THREADING`
+(`scipy/fft/_duccfft/meson.build`: "mingw-w64 does not implement
+pthread_pfork, needed by ducc_fft"), citing freezes with MinGW GCC's
+threading (`mreineck/pocketfft` issue 1). CRAN's Windows binaries are
+built with Rtools' MinGW-w64 GCC. zufft's own pool does not need
+`pthread_atfork`, but it uses `std::thread`, `std::mutex` and
+`std::condition_variable` from the same toolchain. Stage 0 must show,
+before anything else is written, that the thread tests of §10 pass on
+the Windows leg repeatedly (a stress loop of many short threaded calls)
+without a hang. If they do not, zufft builds with
+`DUCC0_NO_LOWLEVEL_THREADING` on Windows only, `workers` above 1 is
+accepted and ignored there with a one-time warning, and `zufft_info()`
+reports it; results are unaffected. fftwtools has no threads anywhere,
+so goal 2 does not depend on this outcome.
+
+### 12.2 Everywhere
+
+- C++17 for the vendored code and the shim (`CXX_STD = CXX17`), C99 for
+  the glue; no system libraries, no `SystemRequirements`, no `configure`.
+- Hidden symbols (R3) need more than `-fvisibility=hidden`: in the
+  drafting build the shared object still exported 65 symbols, all
+  libstdc++ template instantiations and type information. A linker
+  version script exporting only `R_init_zufft` removed them on Linux.
+  Stage 0 settles the equivalent on macOS (`-exported_symbols_list`) and
+  Windows (a `.def` file or `R_init_zufft` alone with
+  `-fvisibility-inlines-hidden`), and whether the gain is worth a
+  per-platform linker flag; if not, `$(CXX_VISIBILITY)` plus
+  `attribute_visible` on `R_init_zufft` is accepted as "hidden enough".
+- SIMD is chosen at compile time from the compiler's macros
+  (`infra/simd.h`): `__AVX512F__` gives 8 doubles per vector, `__AVX__`
+  4, `__SSE2__` 2, `__ARM_NEON` 2, SVE its register width, otherwise
+  scalar. GCC 12 or later with libstdc++ and not on Apple platforms uses
+  `<experimental/simd>` instead of ducc0's own wrappers, at the same
+  widths. Under CRAN's default flags that is SSE2 on x86-64 and NEON on
+  arm64 (macOS arm64 included). No run-time dispatch and no `-m` flags in
+  v0.1.0 (§12.3). `zufft_info()` reports the width and backend so a user
+  can see what they got.
+- Compile time: about 26 s at `-O2` for the one instantiation unit the
+  drafting session built; Stage 0 records the time for the three split
+  units and the installed size (expected under 1 MB).
+- R's `Rcomplex` is a union of a `{ double r, i; }` struct and a C99
+  complex in current R headers. `std::complex<double>` guarantees adjacent
+  real and imaginary scalar access for a genuine `std::complex` array, but
+  that does not by itself make an `Rcomplex` array a live
+  `std::complex<double>` array or waive C++ aliasing and lifetime rules.
+  Stage 0 therefore has two accepted implementations: a zero-copy path only
+  on compiler/platform combinations for which the representation and
+  aliasing strategy are explicitly justified and exercised under LTO and
+  sanitizers, or a portable marshal path that assigns each component into
+  genuine `std::complex<double>` storage and copies results back. The latter
+  is the required fallback and its extra memory is reported by
+  `zufft_info()`; layout equality alone is not treated as proof. The
+  marshal path costs one pass over the data per complex transform, which
+  §11 will see; that is a reason to make the zero-copy case work on the
+  common toolchains, not to skip the proof.
+
+### 12.3 Makevars
+
+The goal is every optimisation ducc0's own build applies that CRAN
+accepts, and nothing CRAN flags. The constraints, all verified against
+R 4.6.1's `tools:::.check_packages` and `etc/Makeconf`:
+
+- Under `--as-cran`, R scans the install log for flags and emits a NOTE
+  "Compilation used the following non-portable flag(s)" for any `-m*`
+  flag other than `-m32`, `-m64`, `-msse2`, `-mfpmath=sse`,
+  `-mstackrealign` and `-mtune=*`; for `-ffast-math`,
+  `-funsafe-math-optimizations`, `-fassociative-math` and
+  `-freciprocal-math`; and for any `-W*` flag not in a short allow-list.
+  `-Wno-*` or `-fno-diagnostics-show-option` escalate it to a WARNING.
+  Flags not in those patterns, such as `-ffp-contract=fast`,
+  `-fno-math-errno`, `-fvisibility=hidden` and `-O3`, pass the scan.
+- R's own flags come last: `ALL_CXXFLAGS = $(PKG_CXXFLAGS) $(CXXPICFLAGS)
+  $(SHLIB_CXXFLAGS) $(CXXFLAGS) $(CXX_DEFS)`. An `-O3` in `PKG_CXXFLAGS`
+  is therefore overridden by the site's `-O2`, and *Writing R
+  Extensions* reserves the optimisation level to the user. zufft does not
+  set one.
+- `PKG_CPPFLAGS` is for `-I`, `-D` and, "where supported", `-pthread`;
+  `PKG_CXXFLAGS` is for compiler flags; `Makevars` must be portable
+  across `make` implementations (no GNU extensions, no targets) unless
+  `SystemRequirements: GNU make` is declared. zufft avoids the
+  declaration: three instantiation units are ordinary sources and need
+  no pattern rules.
+- R's `CXX17STD` is `-std=gnu++17`, so GCC's default `-ffp-contract=fast`
+  is already in force with GCC; Clang (macOS) defaults to `on`
+  (within a statement only).
+
+ducc0's own C++ build (`CMakeLists-C++.txt`, Release) adds
+`-ffp-contract=fast -fexcess-precision=fast -fno-math-errno
+-fno-signed-zeros -fno-trapping-math -fassociative-math
+-freciprocal-math` and `-march=native`, and links with LTO; the Python
+build adds `-O3 -ffast-math` and `-march=native` under
+`DUCC0_OPTIMIZATION=native`. The C++ file's comment on `-ffast-math`
+is that "it breaks the code, and influences other software that depend on
+ducc by changing the rounding mode"; in an R shared library that other
+software is R itself, which settles it independently of CRAN's NOTE.
+
+The resulting file:
+
+```make
+# src/Makevars
+CXX_STD = CXX17
+
+# -I for the vendored tree; custom threading so zufft owns the pool (§6.5);
+# -pthread where std::thread needs it at compile time (WRE §1.2.1).
+PKG_CPPFLAGS = -I. -Iducc0 -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
+
+# Hidden symbols the portable way; FMA contraction across statements
+# (Clang: default is per statement; GCC: already the default); no errno
+# from libm so sqrt and friends inline.  Nothing CRAN's flag scan NOTEs.
+PKG_CXXFLAGS = $(CXX_VISIBILITY) -fvisibility-inlines-hidden \
+               -ffp-contract=fast -fno-math-errno
+
+PKG_LIBS = -pthread
+```
+
+- **Kept from ducc0:** `-ffp-contract=fast` and `-fno-math-errno`. The
+  first is the one that matters for speed on hardware with FMA, which is
+  every arm64 machine and any x86-64 build with a user `-march`; it is
+  also the main reason bit-for-bit equality with a build on another
+  platform cannot be promised (D14). `-fexcess-precision=fast` is x87-only
+  and GCC-only, so it is omitted.
+- **Dropped from ducc0, with the reason:** `-ffast-math`,
+  `-fassociative-math`, `-freciprocal-math` (CRAN NOTE; ducc0's own
+  warning; process-wide floating-point state). `-fno-signed-zeros` and
+  `-fno-trapping-math` (not NOTEd, but they change IEEE semantics for a
+  gain nobody has measured for the FFT; Stage 1 may measure them and add
+  them with a benchmark number in this section). `-O3` (overridden by R,
+  reserved to the user). `-march=native` (CRAN NOTE; a binary built on
+  the CRAN farm must run on every user's CPU).
+- **Opt-in native build.** A user who wants wider vectors adds
+  `CXX17FLAGS += -march=native` (or `-mavx2 -mfma`) to `~/.R/Makevars`
+  and reinstalls from source; `zufft_info()` then reports the width.
+  `Makevars` does not read an environment variable for this: the standard
+  route exists and keeps CRAN's flag scan clean. The README documents it
+  with the measured gain from §11.
+- **`Makevars.win`** is the same file plus whatever §12.1 decides
+  (`-DDUCC0_NO_LOWLEVEL_THREADING` if the go/no-go fails). Whether
+  `-pthread` is needed with Rtools' winpthreads, and whether it is
+  harmless on macOS where no flag is needed, is confirmed in Stage 0
+  (unverified; `clang` accepts `-pthread` and ignores it on Darwin as
+  far as the drafting session knows).
+- **Checked in CI.** The `--as-cran` leg fails the build on the
+  non-portable-flags NOTE (§10), so this file cannot drift.
+
+**Run-time SIMD dispatch** (open question 3) is the only way to give
+CRAN's x86-64 binaries AVX2 without a NOTE and without SIGILL on older
+CPUs: compile the three instantiation units a second time with
+`__attribute__((target("avx2,fma")))` or `#pragma GCC target` inside a
+namespace, and pick at load time with `__builtin_cpu_supports`. It
+doubles the compile time and the object size, needs GNU make for
+per-object flags or pragma-based builds whose macro behaviour differs
+between GCC and Clang, and helps only the shapes that are vectorised at
+all (many lines, or long 1-D complex). It is not in v0.1.0; §11's numbers
+decide whether it is worth a design.
+
+## 13. Roadmap
+
+| Stage | Title | Size |
+| --- | --- | --- |
+| 0 | Identity; vendor script and SPDX gate; Makevars as §12.3; custom threading; §12.1; symbol hiding; complex path; compile time and size | M |
+| 1 | `c2c`, `r2c`, `c2r` over axes; `n`; `norm` with `"none"`; marshalling; first benchmark against fftwtools on the §11 grid | M |
+| 2 | DCT and DST I–IV, inverses, `orthogonalize` | S |
+| 3 | Lengths, frequencies, shifts; `fft_stats()`, `mvfft_stats()`; `fft_workers()` and its context helpers | S |
+| 4 | The pool, `workers`, fork safety, thread tests; threaded benchmarks | M |
+| 5 | The C table, `zufft.h`, the FIt-SNE-shaped fixture | S |
+| 6 | SciPy fixtures, fftwtools oracle, identities, fuzzing, full benchmark run and `bench/RESULTS.md` | M |
+| 7 | Documentation (reference, "Migrating from fftwtools" vignette, README with numbers) and release 0.1.0 | S |
+
+## 14. Acceptance criteria for v0.1.0
+
+1. `R CMD check --as-cran` clean on every CI leg, Windows included, with
+   §12.1's outcome recorded, using at most two cores, and no
+   "non-portable flag(s)" NOTE.
+2. The SciPy fixtures and the fftwtools oracle pass within §10's
+   tolerance on every leg.
+3. `fft_stats()` and `mvfft_stats()` reproduce `stats::fft()` and
+   `mvfft()`'s result structure exactly and their values within
+   tolerance, including their help-page examples.
+4. The §11 benchmark has run on at least one x86-64 Linux and one arm64
+   macOS machine and every target is either met or reported as missed in
+   §11 with the measured ratio.
+5. A fixture package consumes the C table for a 2-D real convolution.
+6. `tools/vendor-ducc` reproduces `src/ducc0/` byte for byte from the
+   recorded commits, and the SPDX gate passes.
+7. The sanitizer/LTO jobs and the manual long-vector release gate pass; if
+   the latter cannot run, the long-vector promise is removed from v0.1.0.
+8. `DESCRIPTION`, `inst/COPYRIGHTS` and the vignette are in place as §8
+   and §5.2 describe.
+
+## 15. Decisions
+
+| # | Question | Decision |
+| --- | --- | --- |
+| D1 | Home | standalone; `zufast` forbids C++ and compiled providers |
+| D2 | Library | ducc0 FFT, SciPy's subset at SciPy's pinned commit |
+| D3 | Not chosen | FFTW (GPL, system library); full ducc0 (GPL-2+); C++ pocketfft (SciPy's former engine; ducc0 is its successor) |
+| D4 | Licence | BSD-3 option for vendored files; MIT for zufft's code; `ctb`/`cph` and `inst/COPYRIGHTS` |
+| D5 | Glue | C, through a `noexcept` C++ shim |
+| D6 | Threads | zufft's own lazy pool; default one worker |
+| D7 | Provider | versioned C table plus a C header; no ducc0 headers |
+| D8 | Precision | double only |
+| D9 | Names | `fft_` prefix with fftwtools' `_c2c`/`_r2c`/`_c2r` suffixes; compatibility as `fft_stats()` |
+| D10 | Axes | 1-based in R; NumPy axis `k` is R axis `k + 1`; `axes = 1` is column-wise |
+| D11 | Info function | `zufft_info()`, the package name (R1) |
+| D12 | Normalisation | SciPy's three plus `"none"`; default `"backward"` |
+| D13 | Argument order | `x, inverse, n, axes, norm, …`; `fft_c2r(x, n)` |
+| D14 | Bit-for-bit parity | withdrawn; tolerance only, so §12.3's flags are allowed |
+| D15 | Build flags | ducc0's flags minus those CRAN NOTEs or R overrides; no `-m` flags; native build is the user's `~/.R/Makevars` |
+| D16 | Primary comparator | fftwtools, on §11's grid, within 1.5× |
+
+## 16. Open questions
+
+1. **The name.** `zufft` or `zuducc`? Recommended: `zufft`; it names the
+   job, and ducc0's other parts will never be in it.
+2. **Masking.** Export `fft()` and `mvfft()` themselves, masking `stats`
+   when attached, instead of `fft_stats()` and `mvfft_stats()`?
+   Recommended: no; masking a `stats` function surprises every script
+   that attaches zufft, and the one-token migration still works.
+3. **Run-time SIMD dispatch on x86-64.** Build the instantiation units
+   twice (SSE2 and AVX2+FMA) and choose at load time, as NumPy does?
+   Recommended: decide from §11's numbers after Stage 1; if the opt-in
+   native build is more than 1.3× faster than the portable one on the
+   column-wise and 2-D cases, write the design; otherwise document the
+   opt-in and stop.
+4. **Track SciPy or ducc0?** Re-vendor only when SciPy does, or follow
+   ducc0's releases? Recommended: SciPy; its review of each bump is a
+   second check, and the fixtures are generated from it.
+5. **Upstream fix.** Report the `in_parallel_region` gap in custom
+   threading mode to ducc0? Recommended: yes, with the one-line fix;
+   zufft's header keeps the workaround until a vendored commit has it.
+6. **Single precision.** Add `float` members to the table now, for
+   consumers such as an image pipeline? Recommended: only when one asks;
+   it doubles the instantiation compile time.
+7. **ducc0 headers for C++ consumers.** Offer them through `LinkingTo` for
+   a consumer that needs inlined tiny transforms in an inner loop?
+   Recommended: not in v0.1.0, for §7's reasons; revisit if such a
+   consumer appears.
+8. **`-fno-signed-zeros -fno-trapping-math`.** Add them if Stage 1
+   measures a gain? Recommended: only with a number in §12.3 and a check
+   that the fixtures still pass.
+
+## 17. What this RFC does not decide
+
+- Whether `zutsne` takes the C table or another FFT; RFC 0028 decides
+  that, and this RFC only makes the table fit FIt-SNE's three shapes.
+- Whether `gsignal`, `pracma` or other users of `stats::fft()` or
+  `fftwtools` switch.
+- A non-uniform FFT for the family: ducc0's is GPL-only, so it would need
+  another library and its own RFC.
+
+## 18. Changes in the 2026-10-13 revision
+
+- Goals restated: fftwtools replacement first, performance parity second,
+  API third; the `zu*` family role is kept but no longer leads (§1, §3).
+- fftwtools' API and C implementation read and recorded (§3.1); a
+  migration table (§5.2) and a vignette added to scope.
+- API: `inverse` moved to second position and `n` before `axes`;
+  `norm = "none"` added; `with_fft_workers()` and `local_fft_workers()`
+  added; fftwtools' `0`/`1` for `inverse` accepted (§5, D12, D13).
+- Bit-for-bit promise withdrawn and the locked reference build removed
+  from §10 (D14); the fftwtools oracle added.
+- `Makevars` specified line by line against R's flag scan and `Makeconf`
+  ordering, with ducc0's own flags as the starting point (§12.3, D15).
+- ducc0's threading and vectorisation behaviour per shape recorded from
+  `fftnd_impl.h` (§6.5) and used to set and explain the benchmark grid and
+  targets (§11, D16).
+- Licence trail made explicit: SPDX gate in CI, `Authors@R` roles,
+  `Copyright:` field (§8, D4).
+
+Review prepared with assistance from generative AI.
