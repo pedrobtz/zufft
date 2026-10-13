@@ -27,7 +27,7 @@ portfolio requires. Stage numbers below are the roadmap's, not the design's.
 | 0 | [Package identity](#stage-0--package-identity) | [#3](https://github.com/pedrobtz/zufft/issues/3) | [#15](https://github.com/pedrobtz/zufft/pull/15) | 2026-10-13 |
 | 1 | [Vendored ducc0 and the build](#stage-1--vendored-ducc0-and-the-build) | [#4](https://github.com/pedrobtz/zufft/issues/4) | [#16](https://github.com/pedrobtz/zufft/pull/16) | 2026-10-13 |
 | 2 | [Portability spikes](#stage-2--portability-spikes) | [#5](https://github.com/pedrobtz/zufft/issues/5) | [#17](https://github.com/pedrobtz/zufft/pull/17) | 2026-10-13 |
-| 3 | [Fourier transforms](#stage-3--fourier-transforms) | [#6](https://github.com/pedrobtz/zufft/issues/6) |  | 2026-10-13 |
+| 3 | [Fourier transforms](#stage-3--fourier-transforms) | [#6](https://github.com/pedrobtz/zufft/issues/6) | [#18](https://github.com/pedrobtz/zufft/pull/18) | 2026-10-13 |
 | 4 | [Cosine and sine transforms](#stage-4--cosine-and-sine-transforms) | [#7](https://github.com/pedrobtz/zufft/issues/7) | | |
 | 5 | [Helpers and stats compatibility](#stage-5--helpers-and-stats-compatibility) | [#8](https://github.com/pedrobtz/zufft/issues/8) | | |
 | 6 | [Thread pool](#stage-6--thread-pool) | [#9](https://github.com/pedrobtz/zufft/issues/9) | | |
