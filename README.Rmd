@@ -120,13 +120,19 @@ threads.
 
 CRAN's binaries are compiled for any CPU of their architecture, so on x86-64
 they use SSE2, two doubles per vector. On a CPU with AVX2 or AVX-512 a build
-for your own machine runs faster. Set `ZUFFT_CXXFLAGS` before installing
-from source; zufft adds it to its compiler flags and nothing else:
+for your own machine runs faster. It takes two steps in R:
+
+1. Set the environment variable `ZUFFT_CXXFLAGS` with `Sys.setenv()`.
+   zufft adds it to its compiler flags; no other package sees it.
+2. Install from source with `install.packages(..., type = "source")`. A
+   prebuilt binary, which is what macOS gets by default, is already
+   compiled and ignores the variable.
 
 ``` r
-Sys.setenv(ZUFFT_CXXFLAGS = "-march=native")
+Sys.setenv(ZUFFT_CXXFLAGS = "-march=native")   # "-mcpu=native" on Apple silicon
 install.packages("zufft", type = "source")
-# or the development version: pak::pak("pedrobtz/zufft")
+# or the development version, which always builds from source:
+# pak::pak("pedrobtz/zufft")
 
 zufft::zufft_info()$simd_width   # 4 with AVX2, 8 with AVX-512; 2 is portable
 ```
