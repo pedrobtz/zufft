@@ -656,12 +656,22 @@ prove it, and a licence trail CRAN can read.
   graph was checked with `g++ -MM`.
 - **From where.** From ducc0 at the commit SciPy's
   `tools/vendoring/vendor_duccfft.sh` pins (`64f42ba` today), with the same
-  SPDX filter. `tools/vendor-ducc` then checks byte-identity with SciPy's
-  `subprojects/duccfft` at a named SciPy commit, and **fails if any file
-  lacks the dual-licence SPDX line or is not in the list above**. It
-  records both commits and each file's SHA-256 in `src/ducc0/VERSION`;
-  `zufft_info()` reports them. A CI job re-runs the SPDX check on every
-  pull request so that no later edit can slip a GPL-only file in. The
+  SPDX filter. `tools/vendor/vendor-ducc` then checks byte-identity with
+  SciPy's `subprojects/duccfft` at a named SciPy commit, and **fails if any
+  file lacks the dual-licence SPDX line or is not in the list above**. It
+  also copies SciPy's `subprojects/duccfft/LICENSE.md` (the BSD-3 text) to
+  `src/ducc0/LICENSE.md`, records both commits in
+  `tools/vendor/manifest.tsv`, each file's SHA-256 in
+  `tools/vendor/checksums.sha256`, and writes the commits into
+  `src/zff_version.h`, from which `zufft_info()` reports them.
+  `tools/vendor/verify` checks the tree offline (exactly the listed files,
+  each checksum, each SPDX line, the version header), and CI runs it on
+  every pull request through r-actions' `vendor.yml`, which also fails a
+  pull request that changes `src/ducc0/` without updating both manifest
+  files; `tools/vendor/verify-selftest` shows in CI that the verifier
+  rejects an unlisted file and an edited one. (Stage 1, 2026-10-13: these
+  paths replace the `tools/vendor-ducc` and `src/ducc0/VERSION` of the
+  first draft, to match r-actions' defaults.) The
   meson version string (`0.41.1`) is not used as an identity: the pinned
   commit postdates that tag and differs from it in six of the files.
 - **Licence.** Each file is "BSD-3-Clause OR GPL-2.0-or-later"; zufft
@@ -677,17 +687,24 @@ prove it, and a licence trail CRAN can read.
   "the odd-sized DCT-IV transforms" (copyright Matteo Frigo and MIT, the
   FFTW authors) sits above the same dual SPDX line; that upstream may
   relicense that code under BSD is upstream's statement and was not
-  examined further.
+  examined further. `infra/threading.cc` also carries "Copyright 2015 The
+  TensorFlow Authors" on two helper templates (a y-combinator) inside a
+  block compiled only under `DUCC0_HIERARCHICAL_SUBMISSION`, which zufft
+  never defines (found in Stage 1).
 - **In the package.** `DESCRIPTION` lists Martin Reinecke as `ctb`, Peter Bell
-  as `ctb` and `cph`, and the Max-Planck-Society as `cph` in `Authors@R`, as the
-  CRAN policy prefers for copied code; a `Copyright:` field points to
-  `inst/COPYRIGHTS`, which carries the BSD-3 text with the
-  Max-Planck-Society and Peter Bell notices and the Frigo/MIT notice. The
-  package `License` stays `MIT + file LICENSE`.
+  as `ctb` and `cph`, and the Max-Planck-Society, Matteo Frigo, MIT and
+  the TensorFlow Authors as `cph` in `Authors@R`, as the CRAN policy
+  prefers for copied code; a `Copyright:` field points to
+  `inst/COPYRIGHTS`, which carries the BSD-3 text with every notice found
+  in the bundled files. Code ported from SciPy's `pyduccfft.cxx` (Stage 5)
+  adds its holder when it lands. The package `License` stays `MIT + file
+  LICENSE`.
 - **Patches.** None to upstream files. zufft supplies
   `src/ducc0_custom_lowlevel_threading.h` (`Mutex`, `LockGuard`,
   `UniqueLock`, `CondVar` as the standard library's) and its pool
-  (`set_active_pool()`, `get_active_pool()`). The header must also
+  (`set_active_pool()`, `get_active_pool()`, and
+  `available_hardware_threads()`, which `threading.cc` defines only in its
+  two built-in modes). The header must also
   declare `in_parallel_region`: at `64f42ba`, `threading.cc` refers to it
   outside the threading-mode blocks, so custom mode fails to compile
   without it. The drafting session confirmed both the failure and the
@@ -700,9 +717,13 @@ prove it, and a licence trail CRAN can read.
   `MR_assert`, which throws and is unaffected.
 - **Instantiation.** One translation unit per transform family
   (`c2c`; `r2c` and `c2r`; `dct` and `dst`) includes `fft.h` and
-  `fftnd_impl.h` and instantiates for `double` only, using
-  `fft_inst_inc.h` inside `ducc0::detail_fft` with `T = double` (the form
-  the drafting build used), so `make -j` can compile them in parallel.
+  `fftnd_impl.h` and explicitly instantiates only that family's functions
+  for `double`, so `make -j` can compile them in parallel. ducc0's
+  `fft_inst_inc.h` instantiates every transform at once (Hartley and
+  `convolve_axis` included), so it cannot be split that way; it stays
+  vendored but unused (Stage 1). R compiles only files directly in `src/`,
+  so each vendored `.cc` is built through a one-line wrapper
+  (`src/zff_ducc_*.cpp`) instead of an `OBJECTS` list.
 - **Updates.** zufft re-vendors when SciPy re-vendors, to the same
   commit, after the full test suite, regenerated SciPy fixtures (§10) and
   a benchmark run (§11).
@@ -839,8 +860,9 @@ so goal 2 does not depend on this outcome.
 
 ### 12.2 Everywhere
 
-- C++17 for the vendored code and the shim (`CXX_STD = CXX17`), C99 for
-  the glue; no system libraries, no `SystemRequirements`, no `configure`.
+- C++17 for the vendored code and the shim (`CXX_STD = CXX17`,
+  `SystemRequirements: C++17`), C99 for the glue; no system libraries, no
+  `configure`.
 - Hidden symbols (R3) need more than `-fvisibility=hidden`: in the
   drafting build the shared object still exported 65 symbols, all
   libstdc++ template instantiations and type information. A linker
@@ -850,6 +872,13 @@ so goal 2 does not depend on this outcome.
   `-fvisibility-inlines-hidden`), and whether the gain is worth a
   per-platform linker flag; if not, `$(CXX_VISIBILITY)` plus
   `attribute_visible` on `R_init_zufft` is accepted as "hidden enough".
+  **Stage 1 outcome (2026-10-13):** `$(CXX_VISIBILITY)` and
+  `$(C_VISIBILITY)` alone are used. With Apple clang 21 on macOS arm64 the
+  installed shared object exports only `R_init_zufft`. On Linux the
+  `build-flags` job lists the exported symbols in its log; any libstdc++
+  weak symbols left there are accepted, because a version script needs a
+  platform-specific linker flag that portable `Makevars` cannot select
+  without `configure`.
 - SIMD is chosen at compile time from the compiler's macros
   (`infra/simd.h`): `__AVX512F__` gives 8 doubles per vector, `__AVX__`
   4, `__SSE2__` 2, `__ARM_NEON` 2, SVE its register width, otherwise
@@ -859,9 +888,12 @@ so goal 2 does not depend on this outcome.
   arm64 (macOS arm64 included). No run-time dispatch and no `-m` flags in
   v0.1.0 (§12.3). `zufft_info()` reports the width and backend so a user
   can see what they got.
-- Compile time: about 26 s at `-O2` for the one instantiation unit the
-  drafting session built; Stage 0 records the time for the three split
-  units and the installed size (expected under 1 MB).
+- Compile time and size, measured in Stage 1 with Apple clang 21 at
+  R's `-O2` on an arm64 Mac: 2.9 s (`c2c`), 4.0 s (`r2c`/`c2r`) and 3.8 s
+  (`dct`/`dst`) for the instantiation units, under 1 s for each other
+  unit; a clean `R CMD INSTALL` takes 16 s. The shared object is 1.1 MB
+  unstripped and the installed package 1.2 MB, above the 1 MB the first
+  draft expected; R CMD check does not flag it.
 - R's `Rcomplex` is a union of a `{ double r, i; }` struct and a C99
   complex in current R headers. `std::complex<double>` guarantees adjacent
   real and imaginary scalar access for a genuine `std::complex` array, but
@@ -893,6 +925,16 @@ R 4.6.1's `tools:::.check_packages` and `etc/Makeconf`:
   `-Wno-*` or `-fno-diagnostics-show-option` escalate it to a WARNING.
   Flags not in those patterns, such as `-ffp-contract=fast`,
   `-fno-math-errno`, `-fvisibility=hidden` and `-O3`, pass the scan.
+- **Separately, R checks `Makevars` itself** ("checking compilation flags
+  in Makevars", `tools:::.check_make_vars`), and that check is a
+  **WARNING**. It expands the `PKG_*FLAGS` variables without R's
+  `Makeconf` and rejects every token matching `-O*`, `-W*`, `-w`,
+  `-ansi`, `-pedantic`, `-f*`, `-m*`, `-std*`, `-g` and a few others.
+  So no `-f` flag at all may be written into `PKG_CXXFLAGS`;
+  `$(CXX_VISIBILITY)` passes only because it is a macro from `Makeconf`
+  that the check does not expand. The first draft of this section missed
+  this check; Stage 1 found it with R 4.6.1 (`-ffp-contract=fast
+  -fno-math-errno` drew the WARNING).
 - R's own flags come last: `ALL_CXXFLAGS = $(PKG_CXXFLAGS) $(CXXPICFLAGS)
   $(SHLIB_CXXFLAGS) $(CXXFLAGS) $(CXX_DEFS)`. An `-O3` in `PKG_CXXFLAGS`
   is therefore overridden by the site's `-O2`, and *Writing R
@@ -918,31 +960,41 @@ is that "it breaks the code, and influences other software that depend on
 ducc by changing the rounding mode"; in an R shared library that other
 software is R itself, which settles it independently of CRAN's NOTE.
 
-The resulting file:
+The resulting file (Stage 1):
 
 ```make
 # src/Makevars
 CXX_STD = CXX17
 
-# -I for the vendored tree; custom threading so zufft owns the pool (§6.5);
-# -pthread where std::thread needs it at compile time (WRE §1.2.1).
-PKG_CPPFLAGS = -I. -Iducc0 -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
+# -I. finds the vendored ducc0/ tree and the custom threading header;
+# custom threading lets zufft own the pool (§6.5); -pthread where
+# std::thread needs it (WRE §1.2.1 allows it in PKG_CPPFLAGS).
+PKG_CPPFLAGS = -I. -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
 
-# Hidden symbols the portable way; FMA contraction across statements
-# (Clang: default is per statement; GCC: already the default); no errno
-# from libm so sqrt and friends inline.  Nothing CRAN's flag scan NOTEs.
-PKG_CXXFLAGS = $(CXX_VISIBILITY) -fvisibility-inlines-hidden \
-               -ffp-contract=fast -fno-math-errno
-
+# Hidden symbols, the way R's own Makeconf spells them.
+PKG_CXXFLAGS = $(CXX_VISIBILITY)
+PKG_CFLAGS = $(C_VISIBILITY)
 PKG_LIBS = -pthread
 ```
 
-- **Kept from ducc0:** `-ffp-contract=fast` and `-fno-math-errno`. The
-  first is the one that matters for speed on hardware with FMA, which is
-  every arm64 machine and any x86-64 build with a user `-march`; it is
-  also the main reason bit-for-bit equality with a build on another
-  platform cannot be promised (D14). `-fexcess-precision=fast` is x87-only
-  and GCC-only, so it is omitted.
+- **Kept from ducc0: fused multiply-add contraction**, the one flag that
+  matters for speed on hardware with FMA (every arm64 machine, and any
+  x86-64 build with a user `-march`). It is also the main reason
+  bit-for-bit equality with a build on another platform cannot be
+  promised (D14). It cannot be a flag, so it is requested in the source:
+  GCC already contracts across statements under R's `-std=gnu++17` (its
+  default outside ISO mode is `-ffp-contract=fast`), and for clang each
+  instantiation unit includes `src/zff_fp_contract.h` first, which issues
+  `#pragma clang fp contract(fast)`. Stage 1 confirmed with Apple clang 21
+  that the pragma reaches template code instantiated later in the file (a
+  two-statement multiply-add compiled to one `fmadd`). It is not a
+  diagnostic pragma, so R's pragma check does not apply.
+- **Dropped from ducc0 because of the `Makevars` WARNING:**
+  `-fno-math-errno`; it affects only the `sqrt` and trigonometric calls
+  made while building a plan, not the transform loops.
+  `-fvisibility-inlines-hidden` was not needed (the macOS build exports
+  only `R_init_zufft` without it). `-fexcess-precision=fast` is x87-only
+  and GCC-only.
 - **Dropped from ducc0, with the reason:** `-ffast-math`,
   `-fassociative-math`, `-freciprocal-math` (CRAN NOTE; ducc0's own
   warning; process-wide floating-point state). `-fno-signed-zeros` and
@@ -958,13 +1010,14 @@ PKG_LIBS = -pthread
   route exists and keeps CRAN's flag scan clean. The README documents it
   with the measured gain from §11.
 - **`Makevars.win`** is the same file plus whatever §12.1 decides
-  (`-DDUCC0_NO_LOWLEVEL_THREADING` if the go/no-go fails). Whether
-  `-pthread` is needed with Rtools' winpthreads, and whether it is
-  harmless on macOS where no flag is needed, is confirmed in Stage 0
-  (unverified; `clang` accepts `-pthread` and ignores it on Darwin as
-  far as the drafting session knows).
-- **Checked in CI.** The `--as-cran` leg fails the build on the
-  non-portable-flags NOTE (§10), so this file cannot drift.
+  (`-DDUCC0_NO_LOWLEVEL_THREADING` if the go/no-go fails). `-pthread` is
+  accepted by Apple clang without a warning; the Windows and Linux legs of
+  Stage 1's CI run confirm it there.
+- **Checked in CI.** The r-actions check fails on the `Makevars` WARNING
+  on every leg. The `build-flags` workflow runs `R CMD check --as-cran` on
+  Linux and macOS and `tools/check-build-log` fails it on the
+  non-portable-flags NOTE or any compiled-code NOTE (§10), so this file
+  cannot drift.
 
 **Run-time SIMD dispatch** (open question 3) is the only way to give
 CRAN's x86-64 binaries AVX2 without a NOTE and without SIGILL on older
@@ -1004,7 +1057,7 @@ decide whether it is worth a design.
    macOS machine and every target is either met or reported as missed in
    §11 with the measured ratio.
 5. A fixture package consumes the C table for a 2-D real convolution.
-6. `tools/vendor-ducc` reproduces `src/ducc0/` byte for byte from the
+6. `tools/vendor/vendor-ducc` reproduces `src/ducc0/` byte for byte from the
    recorded commits, and the SPDX gate passes.
 7. The sanitizer/LTO jobs and the manual long-vector release gate pass; if
    the latter cannot run, the long-vector promise is removed from v0.1.0.
@@ -1029,7 +1082,7 @@ decide whether it is worth a design.
 | D12 | Normalisation | SciPy's three plus `"none"`; default `"backward"` |
 | D13 | Argument order | `x, inverse, n, axes, norm, …`; `fft_c2r(x, n)` |
 | D14 | Bit-for-bit parity | withdrawn; tolerance only, so §12.3's flags are allowed |
-| D15 | Build flags | ducc0's flags minus those CRAN NOTEs or R overrides; no `-m` flags; native build is the user's `~/.R/Makevars` |
+| D15 | Build flags | no `-f`/`-m`/`-O` flag in `Makevars` (R warns); FMA contraction by GCC's default and a clang pragma; native build is the user's `~/.R/Makevars` |
 | D16 | Primary comparator | fftwtools, on §11's grid, within 1.5× |
 
 ## 16. Open questions

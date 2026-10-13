@@ -20,9 +20,10 @@ criteria.
 
 ## Current state
 
-Verified 2026-10-13: package identity only (Stage 0). Nothing of ducc0 is
-vendored and no transform exists yet. Stage 1 vendors ducc0 and sets up the
-build.
+Verified 2026-10-13: Stage 1. The ducc0 FFT subset is vendored in
+`src/ducc0/` and compiles; `zufft_info()` is the only export. No transform
+is exposed yet, and the thread pool is a single-threaded placeholder until
+Stage 6.
 
 ## Stage tracking
 
@@ -69,6 +70,7 @@ Rscript -e 'devtools::test(shuffle = TRUE)'      # order independence
 Rscript -e 'devtools::check()'                   # R CMD check
 Rscript -e 'devtools::build_readme()'            # README.Rmd -> README.md
 air format .                                     # format R sources
+tools/vendor/verify                              # vendored tree vs manifest
 ```
 
 ## Testing conventions
@@ -116,11 +118,35 @@ entry.
   public C API the `zufft_` prefix.
 - Keep hard runtime dependencies at zero.
 
+## Vendored native code
+
+`src/ducc0/` is the FFT component of ducc0, exactly the 17 files SciPy
+vendors in `subprojects/duccfft` (dual "BSD-3-Clause OR GPL-2.0-or-later";
+zufft elects BSD-3). The rest of ducc0 is GPL-only: never copy anything else
+in.
+
+- **Update only through the tool:** `tools/vendor/vendor-ducc [SCIPY_COMMIT]`
+  takes the ducc0 commit SciPy pins, checks every file against SciPy's copy
+  and the SPDX line, and rewrites `src/ducc0/`, `tools/vendor/manifest.tsv`,
+  `tools/vendor/checksums.sha256` and `src/zff_version.h`. Re-vendor only
+  when SciPy does (design §8).
+- `tools/vendor/verify` is the offline check CI runs; never edit a file in
+  `src/ducc0/`. zufft's adaptations live beside it: the custom threading
+  header, the `.cc` wrappers and the instantiation units.
+- **No `-f`, `-m` or `-O` flag in `Makevars`.** R CMD check warns about them
+  ("checking compilation flags in Makevars"). Fused multiply-add contraction
+  comes from `src/zff_fp_contract.h`, included first in each instantiation
+  unit. `tools/check-build-log` fails CI on non-portable flags and on any
+  compiled-code NOTE (abort, exit, stdio).
+- Every holder named in the bundled files is in `Authors@R` and
+  `inst/COPYRIGHTS`; a re-vendor must re-check that list.
+
 ## Continuous integration
 
 Workflows come from `pedrobtz/r-actions`, pinned to `@v1`: `r-cmd-check.yml`
 (quick on pull requests, full on `main`, full on a pull request with the
-`full-ci` label), `coverage.yml` and the pkgdown workflow.
+`full-ci` label), `coverage.yml`, `vendor.yml` and the pkgdown workflow.
+`build-flags.yaml` is local: it fails on the NOTEs r-actions lets through.
 
 ## Commits and pull requests
 
