@@ -2,6 +2,8 @@
 
 export(fft_c2c)
 export(fft_c2r)
+export(fft_dct)
+export(fft_dst)
 export(fft_r2c)
 export(zufft_info)
 useDynLib(zufft, .registration = TRUE, .fixes = "")

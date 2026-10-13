@@ -189,3 +189,63 @@ SEXP zff_fft(SEXP x, SEXP kind_, SEXP dims, SEXP axes_, SEXP n_, SEXP forward_,
   UNPROTECT(pad ? 2 : 1);
   return out;
 }
+
+/* .Call(zff_r2r_call, x, kind, dims, axes, n, type, inorm, ortho, nthreads)
+ *
+ * Discrete cosine (kind 0) or sine (kind 1) transform of the real vector x
+ * over `axes`, each axis cropped or zero-padded to `n` first. `type` is
+ * the effective type (an inverse has already swapped 2 and 3), `inorm` the
+ * effective normalisation (0 none, 1 ortho, 2 by N) and `ortho` SciPy's
+ * orthogonalize flag. Returns the result vector, with no attributes. */
+SEXP zff_r2r(SEXP x, SEXP kind_, SEXP dims, SEXP axes_, SEXP n_, SEXP type_,
+             SEXP inorm_, SEXP ortho_, SEXP nthreads_) {
+  const int kind = Rf_asInteger(kind_), type = Rf_asInteger(type_);
+  const int nd = LENGTH(dims), naxes = LENGTH(axes_);
+  const int inorm = Rf_asInteger(inorm_), ortho = Rf_asLogical(ortho_);
+  const int nthreads = Rf_asInteger(nthreads_);
+  if (TYPEOF(x) != REALSXP || nd < 1 || nd > ZFF_MAXDIM || naxes < 1 ||
+      naxes > nd || LENGTH(n_) != naxes)
+    zff_raise(ZFF_EINTERNAL, "inconsistent shape arguments");
+
+  size_t shape[ZFF_MAXDIM], tgt[ZFF_MAXDIM], len[ZFF_MAXDIM];
+  int axes[ZFF_MAXDIM];
+  for (int i = 0; i < nd; ++i) shape[i] = tgt[i] = (size_t) REAL(dims)[i];
+  for (int k = 0; k < naxes; ++k) {
+    axes[k] = INTEGER(axes_)[k];
+    len[k] = (size_t) REAL(n_)[k];
+    tgt[axes[k]] = len[k];
+  }
+  const size_t ntgt = checked_count(tgt, nd, sizeof(double));
+  SEXP out = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) ntgt));
+  if (ntgt == 0) {
+    UNPROTECT(1);
+    return out;
+  }
+
+  int pad = 0;
+  for (int i = 0; i < nd; ++i)
+    if (tgt[i] > shape[i]) pad = 1;
+  ptrdiff_t istride[ZFF_MAXDIM];
+  const double *in = REAL(x);
+  if (pad) {
+    SEXP tmp = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) ntgt));
+    memset(REAL(tmp), 0, ntgt * sizeof(double));
+    copy_pad((const char *) in, shape, (char *) REAL(tmp), tgt, nd, sizeof(double));
+    in = REAL(tmp);
+    dense_strides(tgt, nd, istride);
+  } else {
+    dense_strides(shape, nd, istride);
+  }
+
+  /* SciPy's N per axis: 2(n - 1) for DCT-I, 2(n + 1) for DST-I, else 2n. */
+  const int delta = type == 1 ? (kind == 0 ? -1 : 1) : 0;
+  const double fct = zff_norm_factor(inorm, len, naxes, 2, delta);
+  zff_layout lin = {nd, tgt, istride};
+  zff_layout lout = {nd, tgt, NULL};
+  const int st = kind == 0
+      ? zff_dct(&lin, in, &lout, REAL(out), naxes, axes, type, fct, ortho, nthreads)
+      : zff_dst(&lin, in, &lout, REAL(out), naxes, axes, type, fct, ortho, nthreads);
+  if (st != ZFF_OK) zff_raise(st, zff_message());
+  UNPROTECT(pad ? 2 : 1);
+  return out;
+}

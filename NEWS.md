@@ -6,6 +6,9 @@
   `"forward"` or `"none"` (the unnormalised convention of fftwtools and
   `stats::fft()`). `workers` is accepted; every transform runs on one thread
   until the thread pool lands.
+* `fft_dct()` and `fft_dst()` compute discrete cosine and sine transforms of
+  types 1 to 4 and their inverses over any axes, with SciPy's definitions,
+  `norm` and `orthogonalize`.
 * Bundles the BSD-licensed FFT subset of ducc0 (the files and commit SciPy
   vendors) and compiles it.
 * `zufft_info()` reports the vendored ducc0 and SciPy commits, the SIMD

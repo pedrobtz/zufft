@@ -699,9 +699,15 @@ prove it, and a licence trail CRAN can read.
   in the bundled files. Code ported from SciPy's `pyduccfft.cxx` (Stage 5)
   adds its holder when it lands. The package `License` stays `MIT + file
   LICENSE`.
-- **Patches.** One, in `tools/vendor/patches/`, applied by the vendor
-  tool after the comparison with SciPy and recorded with its checksum in
-  the manifest: `0001-error-handling-no-gnu-va-args.patch` replaces the GNU
+- **Patches.** Two, in `tools/vendor/patches/`, applied by the vendor
+  tool after the comparison with SciPy and recorded with their checksums in
+  the manifest. `0002-dcst-scratch-buffer-data.patch` (Stage 4) passes the
+  scratch buffer as `buf.data()` instead of `&buf[0]` in the allocating
+  `exec()` overloads of `T_dcst23` and `T_dcst4`: for a plan with no
+  scratch (a length-1 DST-II, for example) the buffer is empty, and
+  `&buf[0]` binds a reference to a null pointer, which the clang and gcc
+  UBSan legs reported and CRAN's UBSan flavors would too.
+  `0001-error-handling-no-gnu-va-args.patch` replaces the GNU
   `, ##__VA_ARGS__` in `MR_fail` and `MR_assert` with plain `__VA_ARGS__`.
   clang `-pedantic`, which CRAN's debian-clang flavor uses for C++, reports
   the GNU form as a significant warning, so R CMD check gives a WARNING

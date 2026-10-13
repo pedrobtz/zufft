@@ -28,7 +28,7 @@ portfolio requires. Stage numbers below are the roadmap's, not the design's.
 | 1 | [Vendored ducc0 and the build](#stage-1--vendored-ducc0-and-the-build) | [#4](https://github.com/pedrobtz/zufft/issues/4) | [#16](https://github.com/pedrobtz/zufft/pull/16) | 2026-10-13 |
 | 2 | [Portability spikes](#stage-2--portability-spikes) | [#5](https://github.com/pedrobtz/zufft/issues/5) | [#17](https://github.com/pedrobtz/zufft/pull/17) | 2026-10-13 |
 | 3 | [Fourier transforms](#stage-3--fourier-transforms) | [#6](https://github.com/pedrobtz/zufft/issues/6) | [#18](https://github.com/pedrobtz/zufft/pull/18) | 2026-10-13 |
-| 4 | [Cosine and sine transforms](#stage-4--cosine-and-sine-transforms) | [#7](https://github.com/pedrobtz/zufft/issues/7) | | |
+| 4 | [Cosine and sine transforms](#stage-4--cosine-and-sine-transforms) | [#7](https://github.com/pedrobtz/zufft/issues/7) | [#19](https://github.com/pedrobtz/zufft/pull/19) | 2026-10-13 |
 | 5 | [Helpers and stats compatibility](#stage-5--helpers-and-stats-compatibility) | [#8](https://github.com/pedrobtz/zufft/issues/8) | | |
 | 6 | [Thread pool](#stage-6--thread-pool) | [#9](https://github.com/pedrobtz/zufft/issues/9) | | |
 | 7 | [C table](#stage-7--c-table) | [#10](https://github.com/pedrobtz/zufft/issues/10) | | |
@@ -264,6 +264,12 @@ with `norm`, `orthogonalize` and SciPy's complex-input rule.
   fails if the explicit argument is honoured.
 
 **Design.** §5.1, §6.1, §6.3.
+
+**Deviation (2026-10-13).** A second patch to a vendored file:
+`tools/vendor/patches/0002-dcst-scratch-buffer-data.patch` fixes undefined
+behaviour in ducc0's DCT/DST plans (a reference bound to a null pointer for
+plans without scratch space), found by this stage's UBSan legs. Design §8
+records it.
 
 ## Stage 5 — Helpers and stats compatibility
 

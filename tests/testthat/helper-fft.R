@@ -6,15 +6,56 @@ fft_tol <- function(expected, N) {
   32 * .Machine$double.eps * max(1, log2(N)) * max(1, max(Mod(expected)))
 }
 
+# The comparison itself: NULL when within the tolerance, else a message.
+fft_mismatch <- function(actual, expected, N = length(expected)) {
+  if (!identical(length(actual), length(expected))) {
+    return(sprintf("length %d, expected %d", length(actual), length(expected)))
+  }
+  err <- if (length(expected)) max(Mod(actual - expected)) else 0
+  tol <- fft_tol(expected, N)
+  if (err > tol) sprintf("max error %.3g over tolerance %.3g", err, tol)
+}
+
+# Batches of comparisons made inside expect_fft_batch() (below).
+fft_batch <- new.env(parent = emptyenv())
+
 expect_fft_equal <- function(
   actual,
   expected,
   N = length(expected),
   label = NULL
 ) {
-  expect_identical(length(actual), length(expected), label = label)
-  err <- if (length(expected)) max(Mod(actual - expected)) else 0
-  expect_lte(err, fft_tol(expected, N), label = label)
+  msg <- fft_mismatch(actual, expected, N)
+  b <- fft_batch$current
+  if (!is.null(b)) {
+    b$count <- b$count + 1L
+    if (!is.null(msg)) {
+      b$bad <- c(b$bad, paste0(if (is.null(label)) "?" else label, ": ", msg))
+    }
+    return(invisible(actual))
+  }
+  if (is.null(msg)) {
+    succeed()
+  } else {
+    fail(paste0(if (is.null(label)) "" else paste0(label, ": "), msg))
+  }
+  invisible(actual)
+}
+
+# Runs `code`, collecting every expect_fft_equal() inside it into one
+# expectation. Loops over many lengths then cost one expectation instead of
+# hundreds, which matters under gctorture (r-actions' gctorture.yml).
+expect_fft_batch <- function(code) {
+  b <- new.env(parent = emptyenv())
+  b$bad <- character(0)
+  b$count <- 0L
+  old <- fft_batch$current
+  fft_batch$current <- b
+  on.exit(fft_batch$current <- old)
+  force(code)
+  fft_batch$current <- old
+  expect_gt(b$count, 0L)
+  expect_identical(b$bad, character(0))
 }
 
 # The defining sum, O(n^2), for vectors. The exponent is reduced modulo n
@@ -45,3 +86,32 @@ fft_axes_oracle <- function(a, axes, inverse = FALSE) {
 }
 
 random_complex <- function(n) complex(real = rnorm(n), imaginary = rnorm(n))
+
+# SciPy's unnormalised DCT and DST definitions, by direct summation.
+r2r_direct <- function(x, kind = c("dct", "dst"), type = 2) {
+  kind <- match.arg(kind)
+  N <- length(x)
+  k <- 0:(N - 1)
+  nn <- 0:(N - 1)
+  y <- numeric(N)
+  for (i in seq_len(N)) {
+    kk <- k[i]
+    y[i] <- switch(
+      paste(kind, type),
+      "dct 1" = x[1] +
+        (-1)^kk * x[N] +
+        2 * sum(x[-c(1, N)] * cos(pi * kk * nn[-c(1, N)] / (N - 1))),
+      "dct 2" = 2 * sum(x * cos(pi * kk * (2 * nn + 1) / (2 * N))),
+      "dct 3" = x[1] +
+        2 * sum(x[-1] * cos(pi * (2 * kk + 1) * nn[-1] / (2 * N))),
+      "dct 4" = 2 * sum(x * cos(pi * (2 * kk + 1) * (2 * nn + 1) / (4 * N))),
+      "dst 1" = 2 * sum(x * sin(pi * (kk + 1) * (nn + 1) / (N + 1))),
+      "dst 2" = 2 * sum(x * sin(pi * (kk + 1) * (2 * nn + 1) / (2 * N))),
+      "dst 3" = (-1)^kk *
+        x[N] +
+        2 * sum(x[-N] * sin(pi * (2 * kk + 1) * (nn[-N] + 1) / (2 * N))),
+      "dst 4" = 2 * sum(x * sin(pi * (2 * kk + 1) * (2 * nn + 1) / (4 * N)))
+    )
+  }
+  y
+}
