@@ -2,51 +2,59 @@
 
 test_that("every DCT and DST type matches its defining sum", {
   withr::local_seed(41)
-  for (N in c(2:20, 31, 64)) {
-    x <- rnorm(N)
-    for (type in 1:4) {
-      lab <- paste("N =", N, "type", type)
-      expect_fft_equal(
-        fft_dct(x, type),
-        r2r_direct(x, "dct", type),
-        N = 2 * N,
-        label = lab
-      )
-      expect_fft_equal(
-        fft_dst(x, type),
-        r2r_direct(x, "dst", type),
-        N = 2 * N,
-        label = lab
-      )
+  expect_fft_batch({
+    for (N in c(2:20, 31, 64)) {
+      x <- rnorm(N)
+      for (type in 1:4) {
+        lab <- paste("N =", N, "type", type)
+        expect_fft_equal(
+          fft_dct(x, type),
+          r2r_direct(x, "dct", type),
+          N = 2 * N,
+          label = lab
+        )
+        expect_fft_equal(
+          fft_dst(x, type),
+          r2r_direct(x, "dst", type),
+          N = 2 * N,
+          label = lab
+        )
+      }
     }
-  }
+  })
   # DST-I and types 2-4 also work at length 1
-  for (type in 1:4) {
-    expect_fft_equal(fft_dst(3, type), r2r_direct(3, "dst", type), N = 2)
-  }
-  for (type in 2:4) {
-    expect_fft_equal(fft_dct(3, type), r2r_direct(3, "dct", type), N = 2)
-  }
+  expect_fft_batch({
+    for (type in 1:4) {
+      expect_fft_equal(fft_dst(3, type), r2r_direct(3, "dst", type), N = 2)
+    }
+  })
+  expect_fft_batch({
+    for (type in 2:4) {
+      expect_fft_equal(fft_dct(3, type), r2r_direct(3, "dct", type), N = 2)
+    }
+  })
 })
 
 test_that("every type and norm round-trips", {
   withr::local_seed(42)
   x <- rnorm(17)
-  for (type in 1:4) {
-    for (norm in c("backward", "ortho", "forward")) {
-      lab <- paste(type, norm)
-      expect_fft_equal(
-        fft_dct(fft_dct(x, type, norm = norm), type, TRUE, norm = norm),
-        x,
-        label = lab
-      )
-      expect_fft_equal(
-        fft_dst(fft_dst(x, type, norm = norm), type, TRUE, norm = norm),
-        x,
-        label = lab
-      )
+  expect_fft_batch({
+    for (type in 1:4) {
+      for (norm in c("backward", "ortho", "forward")) {
+        lab <- paste(type, norm)
+        expect_fft_equal(
+          fft_dct(fft_dct(x, type, norm = norm), type, TRUE, norm = norm),
+          x,
+          label = lab
+        )
+        expect_fft_equal(
+          fft_dst(fft_dst(x, type, norm = norm), type, TRUE, norm = norm),
+          x,
+          label = lab
+        )
+      }
     }
-  }
+  })
 })
 
 test_that("inverse swaps types 2 and 3 and moves the scaling", {
@@ -78,15 +86,20 @@ test_that("inverse swaps types 2 and 3 and moves the scaling", {
 })
 
 test_that("ortho transforms with orthogonalize are orthogonal matrices", {
+  bad <- character(0)
   for (N in c(2, 5, 8)) {
     I <- diag(N)
     for (type in 1:4) {
-      for (f in list(fft_dct, fft_dst)) {
+      for (kind in c("dct", "dst")) {
+        f <- if (kind == "dct") fft_dct else fft_dst
         M <- f(I, type, axes = 1, norm = "ortho")
-        expect_equal(crossprod(M), I, tolerance = 1e-12)
+        if (!isTRUE(all.equal(crossprod(M), I, tolerance = 1e-12))) {
+          bad <- c(bad, paste(kind, type, N))
+        }
       }
     }
   }
+  expect_identical(bad, character(0))
 })
 
 test_that("orthogonalize = FALSE changes the ortho DCT-II only in its first term", {

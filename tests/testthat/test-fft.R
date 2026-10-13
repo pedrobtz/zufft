@@ -2,68 +2,78 @@
 
 test_that("fft_c2c() matches the defining sum for n <= 64", {
   withr::local_seed(11)
-  for (n in 1:64) {
-    z <- random_complex(n)
-    expect_fft_equal(fft_c2c(z), dft_direct(z), label = paste("complex", n))
-    x <- rnorm(n)
-    expect_fft_equal(fft_c2c(x), dft_direct(x), label = paste("real", n))
-    expect_fft_equal(
-      fft_c2c(z, inverse = TRUE, norm = "none"),
-      dft_direct(z, inverse = TRUE),
-      label = paste("inverse", n)
-    )
-  }
+  expect_fft_batch({
+    for (n in 1:64) {
+      z <- random_complex(n)
+      expect_fft_equal(fft_c2c(z), dft_direct(z), label = paste("complex", n))
+      x <- rnorm(n)
+      expect_fft_equal(fft_c2c(x), dft_direct(x), label = paste("real", n))
+      expect_fft_equal(
+        fft_c2c(z, inverse = TRUE, norm = "none"),
+        dft_direct(z, inverse = TRUE),
+        label = paste("inverse", n)
+      )
+    }
+  })
 })
 
 test_that("fft_r2c() and fft_c2r() match the defining sum for n <= 64", {
   withr::local_seed(12)
-  for (n in 1:64) {
-    x <- rnorm(n)
-    h <- n %/% 2 + 1
-    expect_fft_equal(fft_r2c(x), dft_direct(x)[seq_len(h)], N = n, label = n)
-    full <- dft_direct(x)
-    expect_fft_equal(
-      fft_c2r(full[seq_len(h)], n = n, norm = "none"),
-      Re(dft_direct(full, inverse = TRUE)),
-      N = n,
-      label = paste("c2r", n)
-    )
-  }
+  expect_fft_batch({
+    for (n in 1:64) {
+      x <- rnorm(n)
+      h <- n %/% 2 + 1
+      expect_fft_equal(fft_r2c(x), dft_direct(x)[seq_len(h)], N = n, label = n)
+      full <- dft_direct(x)
+      expect_fft_equal(
+        fft_c2r(full[seq_len(h)], n = n, norm = "none"),
+        Re(dft_direct(full, inverse = TRUE)),
+        N = n,
+        label = paste("c2r", n)
+      )
+    }
+  })
 })
 
 test_that("fft_c2c() agrees with stats::fft() for lengths 1 to 1024", {
   withr::local_seed(13)
-  for (n in 1:1024) {
-    z <- random_complex(n)
-    expect_fft_equal(fft_c2c(z), stats::fft(z), label = n)
-  }
+  expect_fft_batch({
+    for (n in 1:1024) {
+      z <- random_complex(n)
+      expect_fft_equal(fft_c2c(z), stats::fft(z), label = n)
+    }
+  })
 })
 
 test_that("fft_c2c() agrees with stats::fft() on large composite lengths", {
   withr::local_seed(14)
-  for (n in c(2^16, 3^7 * 5, 2 * 3 * 5 * 7 * 11 * 13)) {
-    z <- random_complex(n)
-    expect_fft_equal(fft_c2c(z), stats::fft(z), label = n)
-  }
+  expect_fft_batch({
+    for (n in c(2^16, 3^7 * 5, 2 * 3 * 5 * 7 * 11 * 13)) {
+      z <- random_complex(n)
+      expect_fft_equal(fft_c2c(z), stats::fft(z), label = n)
+    }
+  })
 })
 
 test_that("large prime lengths are exact on a pure tone", {
   # stats::fft() is no oracle here: its O(n^2) pass for a large prime factor
   # misses the tolerance at n = 65537 (1.2e-8 against 7.5e-9 on this signal,
   # where zufft's error is 2.9e-11). A pure tone has an exact spectrum.
-  for (n in c(10007, 65537, 100003)) {
-    m <- 123
-    k <- 0:(n - 1)
-    x <- exp(2i * pi * ((m * k) %% n) / n)
-    want <- complex(n)
-    want[m + 1] <- n
-    expect_fft_equal(fft_c2c(x), want, label = n)
-    expect_fft_equal(
-      fft_c2c(want, inverse = TRUE),
-      x,
-      label = paste("inverse", n)
-    )
-  }
+  expect_fft_batch({
+    for (n in c(10007, 65537, 100003)) {
+      m <- 123
+      k <- 0:(n - 1)
+      x <- exp(2i * pi * ((m * k) %% n) / n)
+      want <- complex(n)
+      want[m + 1] <- n
+      expect_fft_equal(fft_c2c(x), want, label = n)
+      expect_fft_equal(
+        fft_c2c(want, inverse = TRUE),
+        x,
+        label = paste("inverse", n)
+      )
+    }
+  })
 })
 
 test_that("column-wise transforms agree with stats::mvfft()", {
@@ -94,37 +104,39 @@ test_that("every ordered axis subset of a 3-d array matches the oracle", {
     c(1, 2, 3),
     c(3, 1, 2)
   )
-  for (ax in subsets) {
-    lab <- paste(ax, collapse = ",")
-    want <- fft_axes_oracle(a, ax)
-    expect_fft_equal(
-      fft_c2c(a, axes = ax),
-      want,
-      N = prod(dim(a)[ax]),
-      label = lab
-    )
-    rwant <- fft_axes_oracle(ra, ax)
-    expect_fft_equal(
-      fft_c2c(ra, axes = ax),
-      rwant,
-      N = prod(dim(a)[ax]),
-      label = lab
-    )
-    # r2c keeps the first half of the last listed axis
-    last <- ax[length(ax)]
-    idx <- lapply(dim(ra), seq_len)
-    idx[[last]] <- seq_len(dim(ra)[last] %/% 2 + 1)
-    half <- do.call(`[`, c(list(rwant), idx, drop = FALSE))
-    expect_fft_equal(
-      fft_r2c(ra, axes = ax),
-      half,
-      N = prod(dim(a)[ax]),
-      label = lab
-    )
-    # and c2r inverts it, odd lengths included
-    back <- fft_c2r(fft_r2c(ra, axes = ax), n = dim(ra)[ax], axes = ax)
-    expect_fft_equal(back, ra, N = prod(dim(a)[ax]), label = lab)
-  }
+  expect_fft_batch({
+    for (ax in subsets) {
+      lab <- paste(ax, collapse = ",")
+      want <- fft_axes_oracle(a, ax)
+      expect_fft_equal(
+        fft_c2c(a, axes = ax),
+        want,
+        N = prod(dim(a)[ax]),
+        label = lab
+      )
+      rwant <- fft_axes_oracle(ra, ax)
+      expect_fft_equal(
+        fft_c2c(ra, axes = ax),
+        rwant,
+        N = prod(dim(a)[ax]),
+        label = lab
+      )
+      # r2c keeps the first half of the last listed axis
+      last <- ax[length(ax)]
+      idx <- lapply(dim(ra), seq_len)
+      idx[[last]] <- seq_len(dim(ra)[last] %/% 2 + 1)
+      half <- do.call(`[`, c(list(rwant), idx, drop = FALSE))
+      expect_fft_equal(
+        fft_r2c(ra, axes = ax),
+        half,
+        N = prod(dim(a)[ax]),
+        label = lab
+      )
+      # and c2r inverts it, odd lengths included
+      back <- fft_c2r(fft_r2c(ra, axes = ax), n = dim(ra)[ax], axes = ax)
+      expect_fft_equal(back, ra, N = prod(dim(a)[ax]), label = lab)
+    }
+  })
 })
 
 test_that("fft_c2c() with no axes transforms every dimension, as stats::fft()", {
@@ -138,18 +150,20 @@ test_that("every norm round-trips and scales as documented", {
   withr::local_seed(18)
   z <- random_complex(30)
   x <- rnorm(30)
-  for (norm in c("backward", "ortho", "forward")) {
-    expect_fft_equal(
-      fft_c2c(fft_c2c(z, norm = norm), TRUE, norm = norm),
-      z,
-      label = norm
-    )
-    expect_fft_equal(
-      fft_c2r(fft_r2c(x, norm = norm), n = 30, norm = norm),
-      x,
-      label = norm
-    )
-  }
+  expect_fft_batch({
+    for (norm in c("backward", "ortho", "forward")) {
+      expect_fft_equal(
+        fft_c2c(fft_c2c(z, norm = norm), TRUE, norm = norm),
+        z,
+        label = norm
+      )
+      expect_fft_equal(
+        fft_c2r(fft_r2c(x, norm = norm), n = 30, norm = norm),
+        x,
+        label = norm
+      )
+    }
+  })
   expect_fft_equal(
     fft_c2c(fft_c2c(z, norm = "none"), TRUE, norm = "none") / 30,
     z
@@ -175,11 +189,13 @@ test_that("Parseval holds under backward, none and ortho", {
 
 test_that("real input to fft_c2c() gives a Hermitian spectrum", {
   withr::local_seed(20)
-  for (n in c(1, 2, 7, 8, 33)) {
-    X <- fft_c2c(rnorm(n))
-    k <- (n - seq_len(n) + 1) %% n + 1
-    expect_fft_equal(X, Conj(X[k]), label = n)
-  }
+  expect_fft_batch({
+    for (n in c(1, 2, 7, 8, 33)) {
+      X <- fft_c2c(rnorm(n))
+      k <- (n - seq_len(n) + 1) %% n + 1
+      expect_fft_equal(X, Conj(X[k]), label = n)
+    }
+  })
   m <- matrix(rnorm(35), 5, 7)
   X <- fft_c2c(m)
   flip <- function(i, n) (n - i + 1) %% n + 1

@@ -6,15 +6,56 @@ fft_tol <- function(expected, N) {
   32 * .Machine$double.eps * max(1, log2(N)) * max(1, max(Mod(expected)))
 }
 
+# The comparison itself: NULL when within the tolerance, else a message.
+fft_mismatch <- function(actual, expected, N = length(expected)) {
+  if (!identical(length(actual), length(expected))) {
+    return(sprintf("length %d, expected %d", length(actual), length(expected)))
+  }
+  err <- if (length(expected)) max(Mod(actual - expected)) else 0
+  tol <- fft_tol(expected, N)
+  if (err > tol) sprintf("max error %.3g over tolerance %.3g", err, tol)
+}
+
+# Batches of comparisons made inside expect_fft_batch() (below).
+fft_batch <- new.env(parent = emptyenv())
+
 expect_fft_equal <- function(
   actual,
   expected,
   N = length(expected),
   label = NULL
 ) {
-  expect_identical(length(actual), length(expected), label = label)
-  err <- if (length(expected)) max(Mod(actual - expected)) else 0
-  expect_lte(err, fft_tol(expected, N), label = label)
+  msg <- fft_mismatch(actual, expected, N)
+  b <- fft_batch$current
+  if (!is.null(b)) {
+    b$count <- b$count + 1L
+    if (!is.null(msg)) {
+      b$bad <- c(b$bad, paste0(if (is.null(label)) "?" else label, ": ", msg))
+    }
+    return(invisible(actual))
+  }
+  if (is.null(msg)) {
+    succeed()
+  } else {
+    fail(paste0(if (is.null(label)) "" else paste0(label, ": "), msg))
+  }
+  invisible(actual)
+}
+
+# Runs `code`, collecting every expect_fft_equal() inside it into one
+# expectation. Loops over many lengths then cost one expectation instead of
+# hundreds, which matters under gctorture (r-actions' gctorture.yml).
+expect_fft_batch <- function(code) {
+  b <- new.env(parent = emptyenv())
+  b$bad <- character(0)
+  b$count <- 0L
+  old <- fft_batch$current
+  fft_batch$current <- b
+  on.exit(fft_batch$current <- old)
+  force(code)
+  fft_batch$current <- old
+  expect_gt(b$count, 0L)
+  expect_identical(b$bad, character(0))
 }
 
 # The defining sum, O(n^2), for vectors. The exponent is reduced modulo n
