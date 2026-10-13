@@ -22,11 +22,14 @@ is the stage plan with exit criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 1. The ducc0 FFT subset is vendored in
+Verified 2026-10-13: Stage 2. The ducc0 FFT subset is vendored in
 `src/ducc0/` and compiles;
 [`zufft_info()`](https://pedrobtz.github.io/zufft/reference/zufft_info.md)
-is the only export. No transform is exposed yet, and the thread pool is
-a single-threaded placeholder until Stage 6.
+is the only export. The shim has a complex-to-complex entry point,
+exercised through an internal 1-D call. The thread pool is a
+single-threaded placeholder until Stage 6. Stage 2 settled the two
+go/no-go questions of design §12: threads stay on for Windows, and
+complex vectors reach ducc0 zero-copy on GCC and clang.
 
 ## Stage tracking
 
@@ -128,6 +131,18 @@ and a `NEWS.md` entry.
 - Use `lower_snake_case`; internal native symbols use the `zff_` prefix,
   the public C API the `zufft_` prefix.
 - Keep hard runtime dependencies at zero.
+
+## Invariants that are easy to break
+
+- **Complex memory is touched only through std::complex in C++.** The
+  zero-copy path (design §12.2) is justified on that condition. C glue
+  may pass `COMPLEX(x)` as a pointer, crop by strides, and copy bytes
+  with `memcpy`, but must not read or write complex elements as doubles
+  while a shim call can see them. `ZFF_COMPLEX_MARSHAL` builds the
+  copying fallback; CI keeps it passing.
+- **Nothing in the shim or on a pool thread calls R.** Errors cross as a
+  status code and a thread-local message; `zff_raise()` in the C glue
+  turns them into classed R conditions.
 
 ## Vendored native code
 

@@ -43,7 +43,7 @@
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Verified 2026-10-13: Stage 1. The ducc0 FFT subset is vendored in <code>src/ducc0/</code> and compiles; <code><a href="reference/zufft_info.html">zufft_info()</a></code> is the only export. No transform is exposed yet, and the thread pool is a single-threaded placeholder until Stage 6.</p>
+<p>Verified 2026-10-13: Stage 2. The ducc0 FFT subset is vendored in <code>src/ducc0/</code> and compiles; <code><a href="reference/zufft_info.html">zufft_info()</a></code> is the only export. The shim has a complex-to-complex entry point, exercised through an internal 1-D call. The thread pool is a single-threaded placeholder until Stage 6. Stage 2 settled the two go/no-go questions of design §12: threads stay on for Windows, and complex vectors reach ducc0 zero-copy on GCC and clang.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-tracking">Stage tracking<a class="anchor" aria-label="anchor" href="#stage-tracking"></a></h2>
@@ -114,6 +114,13 @@
 <li>Wrap roxygen text at 80 characters and run <code>air format .</code> on R sources.</li>
 <li>Use <code>lower_snake_case</code>; internal native symbols use the <code>zff_</code> prefix, the public C API the <code>zufft_</code> prefix.</li>
 <li>Keep hard runtime dependencies at zero.</li>
+</ul></div>
+<div class="section level2">
+<h2 id="invariants-that-are-easy-to-break">Invariants that are easy to break<a class="anchor" aria-label="anchor" href="#invariants-that-are-easy-to-break"></a></h2>
+<ul><li>
+<strong>Complex memory is touched only through std::complex in C++.</strong> The zero-copy path (design §12.2) is justified on that condition. C glue may pass <code>COMPLEX(x)</code> as a pointer, crop by strides, and copy bytes with <code>memcpy</code>, but must not read or write complex elements as doubles while a shim call can see them. <code>ZFF_COMPLEX_MARSHAL</code> builds the copying fallback; CI keeps it passing.</li>
+<li>
+<strong>Nothing in the shim or on a pool thread calls R.</strong> Errors cross as a status code and a thread-local message; <code>zff_raise()</code> in the C glue turns them into classed R conditions.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="vendored-native-code">Vendored native code<a class="anchor" aria-label="anchor" href="#vendored-native-code"></a></h2>

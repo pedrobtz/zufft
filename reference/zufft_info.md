@@ -50,7 +50,8 @@ A named list:
 
 - `complex_path`:
 
-  How complex vectors reach ducc0.
+  `"zero-copy"` when complex vectors are viewed in place, `"marshal"`
+  when they are copied (design §12.2).
 
 ## Examples
 
