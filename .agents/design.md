@@ -528,6 +528,19 @@ the output, not `NA_real_`. `stats::fft()` behaves the same way
 - `R_unload_zufft` takes the entry gate and joins every worker before the
   shared library can be unloaded. Calls through a cached C table after the
   provider unloads remain invalid, as with any `R_GetCCallable` API.
+- **As built (Stage 6, `src/zff_pool.cpp`).** The pool is a FIFO of tasks
+  served by `std::thread` workers waiting on one condition variable; ducc0
+  submits `nthreads - 1` tasks per parallel region and runs the rest on the
+  calling thread. Workers set ducc0's `in_parallel_region`, so nested
+  regions run serially, as in ducc0's own pool. `pthread_atfork` handlers
+  cannot be unregistered, and `devtools::load_all()` unloads and reloads
+  the shared object, so a fork after a reload would jump into unmapped
+  code. When the handlers are registered (the first threaded call), the
+  shared object therefore pins itself in memory with `dlopen(...,
+  RTLD_NODELETE)`; after an unload the handlers find no pool and do
+  nothing. The child abandons the inherited pool object, leaking it on
+  purpose, because its threads do not exist and its queue lock was taken
+  by the prepare handler.
 - A transform is not interruptible. Pool threads never call R.
 
 ## 7. The C table and the `LinkingTo` header
@@ -859,11 +872,20 @@ few thousand points.
 | Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× | met: worst 1.02× | met: worst 1.44× |
 | Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) | met: 0.46–0.68× | met: 0.54–0.83× |
 | Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) | met: 0.69–1.02× | **missed**: complex 1 000 003 at 1.23× (100 003 at 1.11×, real 0.73–0.82×) |
-| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | Stage 6 | Stage 6 |
+| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | met with `axes = 2:1`: 1.82×; **missed** with the default axes: 1.49× (Stage 6) | Stage 8 |
 | `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× | met: 6.5× | met: 8.0× |
 | `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× | met: 651× | met: 624× |
 
-The one miss is reported, not relaxed. It is within the 1.5× bound that
+**The axis order matters in R.** The real transforms halve the last
+listed axis, as SciPy does, but in R's column-major arrays the contiguous
+axis is the first. `fft_r2c()` of a 2048 × 2048 matrix takes 26.5 ms with
+the default axes and 14.5 ms with `axes = 2:1` on the arm64 laptop, and
+two threads speed up the first by 1.49× and the second by 1.82×. The
+semantics stay SciPy's (D10); the reference page tells users to list the
+first axis last when they want speed, and open question 9 asks whether the
+default should change.
+
+The misses are reported, not relaxed. It is within the 1.5× bound that
 governs every grid point, it is a single 1-D complex transform on a shared
 runner, and it is the case option (b) below addresses; Stage 8's full run
 re-measures it.
@@ -1189,6 +1211,15 @@ decide whether it is worth a design.
 8. **`-fno-signed-zeros -fno-trapping-math`.** Add them if Stage 1
    measures a gain? Recommended: only with a number in §12.3 and a check
    that the fixtures still pass.
+
+9. **Default axis order of the real transforms.** In R the first axis is
+   contiguous, and halving it is about 1.8 times faster than halving the
+   last (§11). Keep SciPy's "last listed axis is halved" with `axes = NULL`
+   meaning `1:k`, or make `axes = NULL` mean `k:1` for the real transforms
+   only? Recommended: keep SciPy's rule, because it is what the fixtures,
+   the migration tables and `reticulate` users expect, and document the
+   faster order; decide before 0.1.0 because changing it later breaks
+   callers.
 
 ## 17. What this RFC does not decide
 

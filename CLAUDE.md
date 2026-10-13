@@ -20,11 +20,9 @@ criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 5. The whole R surface of design §5.1 exists:
-the five transforms, the length, frequency and shift helpers, `fft_stats()`
-and `mvfft_stats()`, the `workers` accessors and `zufft_info()`. The thread
-pool (Stage 6) and the C table (Stage 7) are next; until the pool lands,
-every transform runs on one thread whatever `workers` says.
+Verified 2026-10-13: Stage 6. The whole R surface of design §5.1 exists
+and `workers` runs on zufft's own thread pool (`src/zff_pool.cpp`), with
+fork and unload handling. The C table (Stage 7) is next.
 Benchmarks against fftwtools are in `bench/RESULTS.md`.
 
 ## Stage tracking
@@ -133,6 +131,12 @@ entry.
   `memcpy`, but must not read or write complex elements as doubles while a
   shim call can see them. `ZFF_COMPLEX_MARSHAL` builds the copying fallback;
   CI keeps it passing.
+- **Every shim entry point holds the entry gate (`call_gate`) around its
+  ducc0 calls.** It serialises top-level transforms and grows the pool;
+  ducc0's plan cache and the fork handlers rely on it.
+- **Never unregister or bypass the fork handlers.** `zff_pool.cpp` pins the
+  shared object with `RTLD_NODELETE` because `pthread_atfork` handlers
+  outlive an unload (`devtools::load_all()` reloads).
 - **Nothing in the shim or on a pool thread calls R.** Errors cross as a
   status code and a thread-local message; `zff_raise()` in the C glue turns
   them into classed R conditions.
