@@ -54,8 +54,7 @@ dim(spec)
 
 # cosine and sine transforms, SciPy's definitions
 fft_dct(x, norm = "ortho")
-#> [1]  1.102270e+01 -4.650889e+00 -1.000000e+00  4.082483e-01  5.551115e-17
-#> [6] -3.834392e+00
+#> [1] 11.0227038 -4.6508890 -1.0000000  0.4082483  0.0000000 -3.8343924
 fft_dct(fft_dct(x), inverse = TRUE)
 #> [1] 1 4 2 8 5 7
 
@@ -103,7 +102,10 @@ own CPU, add this line to `~/.R/Makevars` and reinstall from source:
 CXX17FLAGS += -march=native
 ```
 
-`zufft_info()$simd_width` then reports the width you got.
+`zufft_info()$simd_width` then reports the width you got. On the Linux
+x86-64 runner of `bench/RESULTS.md`, where this gives AVX2, the 16384 ×
+64 complex column case drops from 15.39 ms to 9.17 ms and a complex
+prime length of 10 007 from 659.6 µs to 389.5 µs.
 
 ## Licence
 
