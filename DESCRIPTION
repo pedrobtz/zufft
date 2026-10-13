@@ -1,6 +1,6 @@
 Package: zufft
 Title: Fast Fourier, Cosine and Sine Transforms with a Bundled 'ducc0'
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: c(
     person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
     person("Martin", "Reinecke", role = "ctb",
