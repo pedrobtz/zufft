@@ -33,6 +33,7 @@ Other contributors:
   \item Matteo Frigo (odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h) [copyright holder]
   \item Massachusetts Institute of Technology (odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h) [copyright holder]
   \item The TensorFlow Authors (helpers in src/ducc0/infra/threading.cc) [copyright holder]
+  \item SciPy Developers (fast-length search in src/zff_lengths.cpp, from SciPy) [copyright holder]
 }
 
 }

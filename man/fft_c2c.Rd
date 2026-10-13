@@ -61,8 +61,10 @@ fftwtools and \code{\link[stats:fft]{stats::fft()}} do.}
 \item{workers}{Threads to use. \code{NULL} uses the session default (1).
 Negative values count back from the number of available cores: \code{-1}
 means all of them. Requests are capped at the available cores, and at
-2 when \verb{_R_CHECK_LIMIT_CORES_} is set. Until the thread pool lands, every
-transform runs on one thread whatever \code{workers} says.}
+2 when \verb{_R_CHECK_LIMIT_CORES_} is set. Threads split the independent
+1-D transforms of a multi-dimensional array, so they help only arrays
+with at least 32 768 elements and more than one line; results are
+identical whatever the number of threads.}
 }
 \value{
 For \code{fft_c2c()} and \code{fft_r2c()} a complex vector or array, for
@@ -83,6 +85,12 @@ The conventions are those of \code{scipy.fft} (\code{fft}, \code{fftn}, \code{rf
 transform, and \code{norm} chooses where the scaling goes. They differ from
 SciPy in two ways: \code{axes} are 1-based, and \code{axes = NULL} means every
 dimension rather than the last one.
+
+Speed: R stores arrays column by column, so the first axis is the
+contiguous one, whereas in NumPy it is the last. The real transforms halve
+the last listed axis, as SciPy does; listing the first axis last, for
+example \code{fft_r2c(m, axes = 2:1)} for a matrix, halves the contiguous axis
+and is often much faster (about 1.8 times for a 2048 x 2048 matrix).
 
 Coming from fftwtools: \code{fft_c2c(x)} is \code{fftw(x)} and \code{fftw_r2c(x)},
 \code{fft_r2c(x)} is \code{fftw_r2c(x, HermConj = 0)}, and an fftwtools inverse is

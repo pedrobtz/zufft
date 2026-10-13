@@ -34,6 +34,7 @@ Depends:
     R (>= 4.1)
 Suggests: 
     fftwtools,
+    parallel,
     testthat (>= 3.0.0),
     withr
 Config/roxygen2/version: 8.1.0

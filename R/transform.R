@@ -12,6 +12,12 @@
 #' SciPy in two ways: `axes` are 1-based, and `axes = NULL` means every
 #' dimension rather than the last one.
 #'
+#' Speed: R stores arrays column by column, so the first axis is the
+#' contiguous one, whereas in NumPy it is the last. The real transforms halve
+#' the last listed axis, as SciPy does; listing the first axis last, for
+#' example `fft_r2c(m, axes = 2:1)` for a matrix, halves the contiguous axis
+#' and is often much faster (about 1.8 times for a 2048 x 2048 matrix).
+#'
 #' Coming from fftwtools: `fft_c2c(x)` is `fftw(x)` and `fftw_r2c(x)`,
 #' `fft_r2c(x)` is `fftw_r2c(x, HermConj = 0)`, and an fftwtools inverse is
 #' the zufft inverse with `norm = "none"`, because fftwtools, like
@@ -41,8 +47,10 @@
 #' @param workers Threads to use. `NULL` uses the session default (1).
 #'   Negative values count back from the number of available cores: `-1`
 #'   means all of them. Requests are capped at the available cores, and at
-#'   2 when `_R_CHECK_LIMIT_CORES_` is set. Until the thread pool lands, every
-#'   transform runs on one thread whatever `workers` says.
+#'   2 when `_R_CHECK_LIMIT_CORES_` is set. Threads split the independent
+#'   1-D transforms of a multi-dimensional array, so they help only arrays
+#'   with at least 32 768 elements and more than one line; results are
+#'   identical whatever the number of threads.
 #'
 #' @return For `fft_c2c()` and `fft_r2c()` a complex vector or array, for
 #'   `fft_c2r()` a double one. Arrays keep their `dim`, with the transformed
