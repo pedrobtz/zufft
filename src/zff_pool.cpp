@@ -132,8 +132,9 @@ zff_pool &the_pool() {
   return *pool;
 }
 
-/* At process exit, join the workers so none outlives the process's own
- * teardown (and valgrind sees no thread left running). Skipped if another
+/* At process exit (POSIX only, see zff_pool_enter), join the workers so
+ * none outlives the process's own teardown (and valgrind sees no thread
+ * left running). Skipped if another
  * thread holds the gate, rather than deadlocking the exit. */
 void join_at_exit() {
   if (!gate.try_lock()) return;
@@ -212,9 +213,10 @@ extern "C" int zff_pool_enter(int nthreads) {
   try {
 #ifdef ZFF_HAVE_ATFORK
     dt::register_atfork(); /* pins the shared object, then the exit hook */
-#else
-    dt::register_exit_hook(); /* per-DLL on Windows: runs at unload or exit */
 #endif
+    /* No exit hook on Windows: a DLL's atexit handlers run in
+     * DLL_PROCESS_DETACH under the loader lock, and joining threads there
+     * deadlocks the process exit (seen on pedrobtz/zufft#21). */
     dt::the_pool().grow(size_t(nthreads) - 1);
     return ZFF_OK;
   } catch (const std::system_error &e) {

@@ -541,8 +541,10 @@ the output, not `NA_real_`. `stats::fft()` behaves the same way
   nothing. The child abandons the inherited pool object, because its
   threads do not exist and its queue lock was taken by the prepare
   handler; it keeps the pointer in a static slot so the memory stays
-  reachable. At process exit an `atexit` handler (registered after the
-  pinning) joins the workers, so no thread outlives the process's
+  reachable. At process exit on POSIX an `atexit` handler (registered
+  after the pinning) joins the workers; not on Windows, where a DLL's
+  `atexit` handlers run under the loader lock and joining threads there
+  deadlocked every process exit in CI; so no thread outlives the process's
   teardown; valgrind on pedrobtz/zufft#21 flagged both, the abandoned pool
   as "definitely lost" and running threads as "possibly lost". Forked
   children leave by `_exit()`, which skips static destructors and exit
