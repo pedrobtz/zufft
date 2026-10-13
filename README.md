@@ -177,9 +177,10 @@ takes two steps in R:
 1.  Set the environment variable `ZUFFT_CXXFLAGS` with `Sys.setenv()`.
     zufft adds it to its compiler flags, and no other package sees it.
 
-2.  Install from source with `install.packages(..., type = "source")`. A
-    prebuilt binary, which is what you get by default on macOS, is
-    already compiled and ignores the variable.
+2.  Install from source with
+    `install.packages("zufft", type = "source")`. A prebuilt binary,
+    which is what you get by default on macOS, is already compiled and
+    ignores the variable.
 
 ``` r
 Sys.setenv(ZUFFT_CXXFLAGS = "-march=native") # "-mcpu=native" on Apple silicon
