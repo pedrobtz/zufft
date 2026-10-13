@@ -65,11 +65,12 @@ shape_t get_shape(const zff_layout *l) {
 }
 
 /* Strides in elements; NULL means dense column-major. Checks that every
- * address the view can reach fits in ptrdiff_t. */
-stride_t get_stride(const zff_layout *l, const shape_t &shape) {
+ * byte the view can reach is addressable with ptrdiff_t, for elements of
+ * `elsize` bytes. */
+stride_t get_stride(const zff_layout *l, const shape_t &shape, std::size_t elsize = 16) {
   const std::size_t nd = shape.size();
   stride_t stride(nd);
-  const auto pmax = std::size_t(std::numeric_limits<std::ptrdiff_t>::max());
+  const auto pmax = std::size_t(std::numeric_limits<std::ptrdiff_t>::max()) / elsize;
   if (!l->stride) {
     std::size_t s = 1;
     for (std::size_t i = 0; i < nd; ++i) {
@@ -89,6 +90,42 @@ stride_t get_stride(const zff_layout *l, const shape_t &shape) {
     reach += (shape[i] - 1) * si;
   }
   return stride;
+}
+
+/* One past the last element a view reaches, in elements. */
+std::size_t extent(const shape_t &shape, const stride_t &stride) {
+  std::size_t e = 1;
+  for (std::size_t i = 0; i < shape.size(); ++i) e += (shape[i] - 1) * std::size_t(stride[i]);
+  return e;
+}
+
+/* A writable view must not reach one element twice: sorted by stride,
+ * each stride must step over everything the smaller ones cover. */
+void check_no_self_overlap(const shape_t &shape, const stride_t &stride) {
+  std::vector<std::size_t> idx;
+  for (std::size_t i = 0; i < shape.size(); ++i)
+    if (shape[i] > 1) idx.push_back(i);
+  std::sort(idx.begin(), idx.end(),
+            [&](std::size_t a, std::size_t b) { return stride[a] < stride[b]; });
+  std::size_t covered = 1;
+  for (auto i : idx) {
+    if (std::size_t(stride[i]) < covered)
+      fail(ZFF_EINVAL, "output layout overlaps itself");
+    covered = std::size_t(stride[i]) * shape[i];
+  }
+}
+
+/* Byte ranges of input and output must be disjoint, unless `inplace_ok`
+ * and the two views are identical. */
+void check_overlap(const void *in, std::size_t in_bytes, const void *out,
+                   std::size_t out_bytes, bool identical, bool inplace_ok) {
+  const auto a = reinterpret_cast<std::uintptr_t>(in);
+  const auto b = reinterpret_cast<std::uintptr_t>(out);
+  const bool disjoint = a + in_bytes <= b || b + out_bytes <= a;
+  if (disjoint) return;
+  if (inplace_ok && identical) return;
+  fail(ZFF_EINVAL, inplace_ok ? "input and output overlap but are not the same view"
+                              : "input and output must not overlap");
 }
 
 shape_t get_axes(int naxes, const int *axes, std::size_t ndim) {
@@ -254,8 +291,9 @@ extern "C" int zff_c2c(const zff_layout *lin, const double *in,
     if (get_shape(lout) != shape) fail(ZFF_ESHAPE, "input and output shapes differ");
     const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, shape);
     const shape_t ax = get_axes(naxes, axes, shape.size());
-    if (in == out && sin != sout)
-      fail(ZFF_EINVAL, "in-place transform needs identical layouts");
+    check_no_self_overlap(shape, sout);
+    check_overlap(in, 16 * extent(shape, sin), out, 16 * extent(shape, sout),
+                  in == out && sin == sout, true);
     complex_in cin(in, shape, sin);
     complex_out cout(out, shape, sout);
     call_gate gate(nthreads);
@@ -278,7 +316,9 @@ extern "C" int zff_r2c(const zff_layout *lin, const double *in,
     const shape_t ax = get_axes(naxes, axes, shape.size());
     const shape_t oshape = half_shape(shape, ax);
     if (get_shape(lout) != oshape) fail(ZFF_ESHAPE, "output shape must halve the last axis");
-    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, oshape);
+    const stride_t sin = get_stride(lin, shape, 8), sout = get_stride(lout, oshape);
+    check_no_self_overlap(oshape, sout);
+    check_overlap(in, 8 * extent(shape, sin), out, 16 * extent(oshape, sout), false, false);
     const cfmav<double> vin(in, shape, sin);
     complex_out cout(out, oshape, sout);
     call_gate gate(nthreads);
@@ -301,7 +341,9 @@ extern "C" int zff_c2r(const zff_layout *lin, const double *in,
     const shape_t ax = get_axes(naxes, axes, oshape.size());
     const shape_t shape = half_shape(oshape, ax);
     if (get_shape(lin) != shape) fail(ZFF_ESHAPE, "input shape must be the halved output shape");
-    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, oshape);
+    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, oshape, 8);
+    check_no_self_overlap(oshape, sout);
+    check_overlap(in, 16 * extent(shape, sin), out, 8 * extent(oshape, sout), false, false);
     complex_in cin(in, shape, sin);
     const vfmav<double> vout(out, oshape, sout);
     call_gate gate(nthreads);
@@ -326,8 +368,10 @@ extern "C" int zff_c2c_real(const zff_layout *lin, const double *in,
     if (!in || !out) fail(ZFF_EINVAL, "NULL data pointer");
     const shape_t shape = get_shape(lin);
     if (get_shape(lout) != shape) fail(ZFF_ESHAPE, "input and output shapes differ");
-    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, shape);
+    const stride_t sin = get_stride(lin, shape, 8), sout = get_stride(lout, shape);
     const shape_t ax = get_axes(naxes, axes, shape.size());
+    check_no_self_overlap(shape, sout);
+    check_overlap(in, 8 * extent(shape, sin), out, 16 * extent(shape, sout), false, false);
     const cfmav<double> vin(in, shape, sin);
     complex_out cout(out, shape, sout);
     const vfmav<cplx> half(cout.view().data(), half_shape(shape, ax), cout.view().stride());
@@ -356,10 +400,11 @@ int zff_r2r(const zff_layout *lin, const double *in, const zff_layout *lout,
     if (type < 1 || type > 4) fail(ZFF_EINVAL, "transform type must be 1, 2, 3 or 4");
     const shape_t shape = get_shape(lin);
     if (get_shape(lout) != shape) fail(ZFF_ESHAPE, "input and output shapes differ");
-    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, shape);
+    const stride_t sin = get_stride(lin, shape, 8), sout = get_stride(lout, shape, 8);
     const shape_t ax = get_axes(naxes, axes, shape.size());
-    if (in == out && sin != sout)
-      fail(ZFF_EINVAL, "in-place transform needs identical layouts");
+    check_no_self_overlap(shape, sout);
+    check_overlap(in, 8 * extent(shape, sin), out, 8 * extent(shape, sout),
+                  in == out && sin == sout, true);
     if (is_dct && type == 1)
       for (auto a : ax)
         if (shape[a] < 2) fail(ZFF_ESHAPE, "DCT-I needs lengths of at least 2");
