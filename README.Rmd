@@ -20,30 +20,21 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 zufft provides fast Fourier transforms (FFTs), along with discrete cosine
 and sine transforms (DCTs and DSTs):
 
-* `fft_c2c()` computes the discrete Fourier transform (DFT), like
-  `stats::fft()`.
-* `fft_r2c()` computes the DFT of real input and returns only the
-  non-negative frequency terms. `fft_c2r()` is its inverse.
-* `fft_dct()` and `fft_dst()` compute DCTs and DSTs of types 1 to 4.
-* `fft_stats()` and `mvfft_stats()` are drop-in replacements for
-  `stats::fft()` and `stats::mvfft()`.
+| zufft | stats | fftwtools | Computes |
+| --- | --- | --- | --- |
+| `fft_c2c()` | `fft()`, `mvfft()` | `fftw()`, `fftw_c2c()`, `mvfftw_c2c()`, `fftw2d()`, `fftw3d()` | the discrete Fourier transform (DFT) |
+| `fft_r2c()` | — | `fftw_r2c()`, `mvfftw_r2c()`, `fftw_r2c_2d()`, `fftw_r2c_3d()` | the DFT of real input, non-negative frequency terms only |
+| `fft_c2r()` | — | `fftw_c2r()`, `mvfftw_c2r()` | the inverse of `fft_r2c()` |
+| `fft_dct()`, `fft_dst()` | — | — | DCTs and DSTs of types 1 to 4 |
+| `fft_stats()`, `mvfft_stats()` | `fft()`, `mvfft()` | — | drop-in replacements for stats |
 
-The names will be familiar if you've used fftwtools, and
-`vignette("migrating-from-fftwtools")` maps every fftwtools function to its
-zufft equivalent. The conventions for axes, normalisation and the DCT and
-DST definitions follow `scipy.fft`. Helpers such as `fft_next_len()`,
-`fft_freq()` and `fft_shift()` mirror SciPy's `next_fast_len()`,
-`fftfreq()` and `fftshift()`.
+`vignette("migrating-from-fftwtools")` gives the exact arguments for each
+fftwtools function, such as `HermConj = 0` and the scaling of inverses.
 
-zufft bundles the BSD-licensed FFT code of
-[ducc0](https://github.com/mreineck/ducc), the same files and commit that
-SciPy uses. This means you don't need a system FFTW library:
-`install.packages()` is all it takes, on every platform. zufft is
-MIT-licensed and carries no GPL code.
-
-It's also fast. With CRAN's build, zufft is faster than fftwtools on 30 of
-33 benchmark cases, and at most 1.26 times slower on the other three.
-Threads help further.
+The conventions for axes, normalisation and the DCT and DST definitions
+follow `scipy.fft`. Helpers such as `fft_next_len()`, `fft_freq()` and
+`fft_shift()` mirror SciPy's `next_fast_len()`, `fftfreq()` and
+`fftshift()`.
 
 ## Installation
 
