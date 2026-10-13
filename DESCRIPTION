@@ -1,5 +1,5 @@
 Package: zufft
-Title: Fast Fourier, Cosine and Sine Transforms with a Bundled 'ducc0'
+Title: Fast Fourier, Cosine and Sine Transforms
 Version: 0.1.0
 Authors@R: c(
     person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
@@ -25,9 +25,7 @@ Description: Computes discrete Fourier transforms (complex,
     (<https://github.com/mreineck/ducc>) bundled in the BSD-licensed
     subset that 'SciPy' uses. Transforms of any length run in O(n log n)
     time, real input uses true real transforms, and several threads can
-    share one transform. The interface follows the conventions of
-    'scipy.fft' and offers the unnormalised inverse of 'fftwtools' and
-    stats::fft().
+    share one transform.
 License: MIT + file LICENSE
 URL: https://github.com/pedrobtz/zufft, https://pedrobtz.github.io/zufft/
 BugReports: https://github.com/pedrobtz/zufft/issues
