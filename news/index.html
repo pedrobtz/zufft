@@ -53,6 +53,7 @@
 <li>
 <code>workers</code> runs a transform on several threads, through zufft’s own lazy thread pool; <code><a href="../reference/fft_workers.html">fft_workers()</a></code>, <code><a href="../reference/fft_workers.html">with_fft_workers()</a></code> and <code><a href="../reference/fft_workers.html">local_fft_workers()</a></code> set the default. Results do not depend on the number of threads, and forked children (<code><a href="https://rdrr.io/r/parallel/mclapply.html" class="external-link">parallel::mclapply()</a></code>) are safe.</li>
 <li>A registered C table and the header <code>inst/include/zufft.h</code> let other packages call the transforms from C with <code>LinkingTo: zufft</code>, from any thread.</li>
+<li>Setting the environment variable <code>ZUFFT_CXXFLAGS</code> (for example to <code>"-march=native"</code>) before installing from source builds zufft for the local CPU on Linux and macOS; see the README.</li>
 <li>
 <code><a href="../articles/migrating-from-fftwtools.html">vignette("migrating-from-fftwtools")</a></code> maps every fftwtools function to zufft; an article covers <code>scipy.fft</code> users.</li>
 <li>Bundles the BSD-licensed FFT subset of ducc0 (the files and commit SciPy vendors) and compiles it.</li>

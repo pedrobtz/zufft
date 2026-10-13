@@ -179,6 +179,10 @@ never copy anything else in.
   clang `-pedantic` (CRAN’s debian-clang flavor) and for a UBSan finding
   in the DCT/DST plans. zufft’s adaptations live beside it: the custom
   threading header, the `.cc` wrappers and the instantiation units.
+- **`$(ZUFFT_CXXFLAGS)` in `PKG_CXXFLAGS` is the opt-in native-build
+  hook.** It must stay empty by default (never give it a value in
+  `Makevars`), so CRAN sees only R’s flags; the `portability` workflow’s
+  native job builds with it set.
 - **No `-f`, `-m` or `-O` flag in `Makevars`.** R CMD check warns about
   them (“checking compilation flags in Makevars”). Fused multiply-add
   contraction is switched off by `src/zff_fp_contract.h`, included first

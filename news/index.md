@@ -58,6 +58,9 @@ First release.
 - A registered C table and the header `inst/include/zufft.h` let other
   packages call the transforms from C with `LinkingTo: zufft`, from any
   thread.
+- Setting the environment variable `ZUFFT_CXXFLAGS` (for example to
+  `"-march=native"`) before installing from source builds zufft for the
+  local CPU on Linux and macOS; see the README.
 - [`vignette("migrating-from-fftwtools")`](https://pedrobtz.github.io/zufft/articles/migrating-from-fftwtools.md)
   maps every fftwtools function to zufft; an article covers `scipy.fft`
   users.

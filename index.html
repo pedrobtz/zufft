@@ -174,9 +174,23 @@
 <p>Most of the margin comes from planning: zufft caches its plans, while fftwtools builds a new FFTW plan on every call. Threads add more (<code>workers = 2</code>), which fftwtools does not offer. Transforms of any length run in O(n log n): a prime length of 100 003 takes milliseconds, against seconds for <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>.</p>
 <p>On Apple silicon the gap is wider, but partly because Homebrew’s FFTW has no vector code for double precision there; <code>bench/RESULTS.md</code> has those numbers too.</p>
 <p>R stores arrays column by column, so the first dimension is the contiguous one. With <code>axes = NULL</code> the real transforms halve that dimension, which is fast and matches fftwtools; give <code>axes</code> explicitly to halve the last one listed, as SciPy does. Results are bit-identical whatever the number of threads.</p>
-<p><strong>A native build</strong> is the user’s choice: CRAN’s binaries use the portable SSE2 (x86-64) or NEON (arm64) vector width. To compile for your own CPU, add this line to <code>~/.R/Makevars</code> and reinstall from source:</p>
-<pre><code>CXX17FLAGS += -march=native</code></pre>
-<p><code>zufft_info()$simd_width</code> then reports the width you got. On the Linux x86-64 runner of <code>bench/RESULTS.md</code>, where this gives AVX2, the 16384 × 64 complex column case drops from 15.39 ms to 9.17 ms and a complex prime length of 10 007 from 659.6 µs to 389.5 µs.</p>
+</div>
+<div class="section level2">
+<h2 id="native-build">Native build<a class="anchor" aria-label="anchor" href="#native-build"></a>
+</h2>
+<p>CRAN’s binaries are compiled for any CPU of their architecture, so on x86-64 they use SSE2, two doubles per vector. On a CPU with AVX2 or AVX-512 a build for your own machine runs faster. Set <code>ZUFFT_CXXFLAGS</code> before installing from source; zufft adds it to its compiler flags and nothing else:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>ZUFFT_CXXFLAGS <span class="op">=</span> <span class="st">"-march=native"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"zufft"</span>, type <span class="op">=</span> <span class="st">"source"</span><span class="op">)</span></span>
+<span><span class="co"># or the development version: pak::pak("pedrobtz/zufft")</span></span>
+<span></span>
+<span><span class="fu">zufft</span><span class="fu">::</span><span class="fu"><a href="reference/zufft_info.html">zufft_info</a></span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">simd_width</span>   <span class="co"># 4 with AVX2, 8 with AVX-512; 2 is portable</span></span></code></pre></div>
+<p>This works on Linux and macOS; installing from source needs a compiler (on macOS, the Xcode command line tools). Windows builds ignore <code>ZUFFT_CXXFLAGS</code> and stay portable: code built for AVX by the GCC in Rtools crashed in our tests. On the Linux x86-64 runner of <code>bench/RESULTS.md</code>, where this gives AVX2, the 16384 × 64 complex column case drops from 15.39 ms to 9.17 ms and a complex prime length of 10 007 from 659.6 µs to 389.5 µs. On Apple silicon the vector width stays at two doubles, so a native build (<code>-mcpu=native</code> there) gains little.</p>
+<p>Two things to know:</p>
+<ul>
+<li>The package then runs only on CPUs like yours: do not copy the installed library to other machines.</li>
+<li>With GCC on a CPU with fused multiply-add, results can differ in the last bit between thread counts; <code>zufft::zufft_info()$fp_contract</code> reports <code>"fast"</code> when that applies. CRAN’s builds report <code>"off"</code>.</li>
+</ul>
 </div>
 <div class="section level2">
 <h2 id="licence">Licence<a class="anchor" aria-label="anchor" href="#licence"></a>
