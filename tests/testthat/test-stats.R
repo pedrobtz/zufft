@@ -1,12 +1,6 @@
 # fft_stats() and mvfft_stats() against stats::fft() and stats::mvfft()
 # (design §5.3).
 
-expect_stats_equal <- function(actual, expected) {
-  expect_identical(attributes(actual), attributes(expected))
-  expect_identical(typeof(actual), typeof(expected))
-  expect_fft_equal(as.vector(actual), as.vector(expected))
-}
-
 test_that("fft_stats() matches stats::fft() on vectors and arrays", {
   withr::local_seed(51)
   for (n in c(2:20, 64, 97, 1000)) {

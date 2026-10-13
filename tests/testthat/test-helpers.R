@@ -1,15 +1,6 @@
 # fft_next_len(), fft_prev_len(), fft_freq(), fft_rfreq(), fft_shift(),
 # fft_ishift() (design §5.1, §6.2).
 
-largest_factor_ok <- function(n, primes) {
-  for (p in primes) {
-    while (n %% p == 0) {
-      n <- n / p
-    }
-  }
-  n == 1
-}
-
 test_that("fast lengths are the nearest smooth numbers, as SciPy defines them", {
   # SciPy documents next_fast_len as the smallest 11-smooth (complex) or
   # 5-smooth (real) number >= n, and prev_fast_len as the largest <= n.

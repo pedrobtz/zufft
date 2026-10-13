@@ -115,3 +115,20 @@ r2r_direct <- function(x, kind = c("dct", "dst"), type = 2) {
   }
   y
 }
+
+# TRUE when n has no prime factor outside `primes`.
+largest_factor_ok <- function(n, primes) {
+  for (p in primes) {
+    while (n %% p == 0) {
+      n <- n / p
+    }
+  }
+  n == 1
+}
+
+# Same attributes and type as expected, values within the tolerance.
+expect_stats_equal <- function(actual, expected) {
+  expect_identical(attributes(actual), attributes(expected))
+  expect_identical(typeof(actual), typeof(expected))
+  expect_fft_equal(as.vector(actual), as.vector(expected))
+}
