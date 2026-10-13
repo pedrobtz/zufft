@@ -20,6 +20,16 @@ int zufft_header_check(void) {
 }
 EOC
 cp "$tmp/use.c" "$tmp/use.cpp"
-"$CC" -std=c99 -Wall -Wextra -Werror -Wno-error=c23-extensions -I"$RINC" -Iinst/include -c "$tmp/use.c" -o "$tmp/c.o"
-"$CXX" -std=c++17 -Wall -Wextra -Werror -I"$RINC" -Iinst/include -c "$tmp/use.cpp" -o "$tmp/cpp.o"
+# Fail on any diagnostic in zufft.h or the test file itself; R's own
+# headers may warn under some compilers (clang flags Boolean.h's C23 enum
+# in C99), which is not this header's business.
+check() {
+  out=$("$@" 2>&1) || { printf '%s\n' "$out"; exit 1; }
+  if printf '%s\n' "$out" | grep -E '(zufft\.h|use\.c|use\.cpp):[0-9]+' >/dev/null; then
+    printf '%s\n' "$out"
+    exit 1
+  fi
+}
+check "$CC" -std=c99 -Wall -Wextra -pedantic -I"$RINC" -Iinst/include -c "$tmp/use.c" -o "$tmp/c.o"
+check "$CXX" -std=c++17 -Wall -Wextra -pedantic -I"$RINC" -Iinst/include -c "$tmp/use.cpp" -o "$tmp/cpp.o"
 echo "ok  inst/include/zufft.h compiles as C99 and C++17"
