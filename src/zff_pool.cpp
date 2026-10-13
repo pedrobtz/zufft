@@ -132,6 +132,7 @@ zff_pool &the_pool() {
   return *pool;
 }
 
+#ifdef ZFF_HAVE_ATFORK
 /* At process exit (POSIX only, see zff_pool_enter), join the workers so
  * none outlives the process's own teardown (and valgrind sees no thread
  * left running). Skipped if another
@@ -152,7 +153,6 @@ void register_exit_hook() {
   std::call_once(exit_once, [] { std::atexit(join_at_exit); });
 }
 
-#ifdef ZFF_HAVE_ATFORK
 std::once_flag atfork_once;
 
 void atfork_prepare() {
