@@ -134,12 +134,15 @@ change. It is withdrawn (D14).
   `next_fast_len` and `prev_fast_len`), frequency and shift helpers.
 - `fft_stats()` and `mvfft_stats()`: drop-in replacements for
   `stats::fft()` and `mvfft()` (§5.3).
-- Long vectors.
 - A registered C table and a C header for `LinkingTo` (§7).
 - A "Migrating from fftwtools" vignette built from the table in §5.2.
 
 **Later, when asked:**
 
+- Long vectors as a promise. The code carries every length as `size_t`
+  and no `int` sits in between (§6.2), but the release gate of §10 needs a
+  runner with about 50 GB that Stage 8 did not have, so v0.1.0 does not
+  claim them (Stage 8, 2026-10-13).
 - Hermitian transforms (`hfft`, `ihfft`) and the Hartley transforms
   already in the vendored subset (`r2r_genuine_hartley` and siblings).
 - Single precision in the C table, for consumers that want it.
@@ -373,7 +376,7 @@ fftwtools would run an inverse.
 | (none) | `workers`, `norm`, `n` padding, `axes`, DCT/DST, helpers |
 
 What a migrating package gains: no `SystemRequirements`, no GPL, every
-length in O(n log n), threads, long vectors, and `fft_c2r()` that never
+length in O(n log n), threads, and `fft_c2r()` that never
 destroys its input. What it loses: nothing in the table above. The
 vignette carries this table and a worked example per row.
 
@@ -385,7 +388,7 @@ attributes and unnormalised inverse, including returning inputs of length
 0 and 1 unchanged as `fourier.c` does. Values agree to rounding, not bit
 for bit (§10). A package moves by replacing `fft(` with
 `zufft::fft_stats(` and adding the `Imports` entry; it gains every length
-in O(n log n) and long vectors, and `fft_stats()` on a real vector uses
+in O(n log n), and `fft_stats()` on a real vector uses
 the real transform internally. These are thin wrappers over
 `fft_c2c(..., norm = "none")`.
 
@@ -444,8 +447,9 @@ array moved between R and NumPy by `reticulate` keeps its shape, so axis
 - `n` crops or zero-pads each transformed axis before the transform, as
   SciPy does. A length below 1 (or below 2 for DCT-I) is
   `zufft_length_error`, as SciPy raises `ValueError`.
-- Long vectors are supported: lengths are `R_xlen_t` in R and `size_t` in
-  ducc0, and no `int` sits between them. R array extents remain limited by
+- Lengths are `R_xlen_t` in R and `size_t` in ducc0, and no `int` sits
+  between them, so long vectors should work; v0.1.0 does not promise them
+  because the §10 release gate has not run (§2). R array extents remain limited by
   the integer `dim` attribute even when their product is a long-vector
   length; a plain vector's extent comes from `XLENGTH()`. Numeric length
   arguments above 2^53 are rejected because R cannot represent them
@@ -790,15 +794,19 @@ length below the minimum, or an output beyond R's vector limits),
 ## 10. Testing
 
 - **SciPy fixtures.** `tools/make-scipy-reference.py` runs offline in a
-  locked environment built from SciPy commit `ecee36d`, not from a nominal
-  release version. It covers every transform and type, every `norm`,
+  clean virtual environment with a released SciPy whose fft backend is
+  ducc0. (The first draft asked for a SciPy built from commit `ecee36d`;
+  with bit-identity withdrawn (D14) the tolerance below is the criterion,
+  so Stage 8 used the SciPy 1.18.1 wheel and records it in
+  `tests/testthat/fixtures/scipy/MANIFEST`.) It covers every transform and type, every `norm`,
   `orthogonalize`, lengths 1–64 and selected composite, prime and large
   lengths, 2-D and 3-D arrays over each ordered axis subset, crop and pad,
   odd and even `c2r` lengths, and validation failures. It stores inputs and
-  outputs as little-endian doubles in `tests/testthat/fixtures/` (budget
-  1 MB), with the SciPy and ducc0 commits, compiler, flags and platform in
-  a manifest. Fixture regeneration fails if SciPy no longer vendors the
-  recorded ducc0 commit.
+  outputs as little-endian doubles in `tests/testthat/fixtures/scipy/`
+  (budget 1 MB; Stage 8: 2040 cases, 1.00 MB), with the SciPy, NumPy and
+  Python versions and the platform in a manifest. All 2040 cases agree
+  within the tolerance. SciPy reaches a ducc0 assertion (`RuntimeError`)
+  for a DCT-I of length 1, where zufft raises `zufft_length_error` first.
 - **Numerical criterion.** Every CI leg requires
   `max(Mod(actual - expected)) <= 32 * .Machine$double.eps *
   max(1, log2(N)) * max(1, max(Mod(expected)))`, where `N` is the effective
@@ -852,6 +860,8 @@ length below the minimum, or an output beyond R's vector limits),
   as a manual release gate on a runner with enough memory (about 50 GB for
   a real input, output and workspace). If that gate is unavailable, long
   vectors move out of v0.1.0 rather than shipping as an unverified claim.
+  **Outcome (Stage 8):** no such runner was available, so §2 moved long
+  vectors to "later" and §14 no longer requires the gate.
 - **Native safety.** Stage 0 and release candidates run the shim and C-table
   tests under AddressSanitizer and UndefinedBehaviorSanitizer, and at least
   one supported compiler builds and tests with LTO. Valgrind covers the R
@@ -1191,8 +1201,8 @@ decide whether it is worth a design.
 5. A fixture package consumes the C table for a 2-D real convolution.
 6. `tools/vendor/vendor-ducc` reproduces `src/ducc0/` byte for byte from the
    recorded commits, and the SPDX gate passes.
-7. The sanitizer/LTO jobs and the manual long-vector release gate pass; if
-   the latter cannot run, the long-vector promise is removed from v0.1.0.
+7. The sanitizer and LTO jobs pass. (The long-vector gate could not run,
+   so the long-vector promise was removed from v0.1.0 in Stage 8.)
 8. `DESCRIPTION`, `inst/COPYRIGHTS` and the vignette are in place as §8
    and §5.2 describe.
 

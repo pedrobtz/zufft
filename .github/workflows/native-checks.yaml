@@ -23,6 +23,10 @@ jobs:
     uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@v1
     with:
       asan: true
+      # The C-table tests install a consumer package and skip on CRAN; run
+      # them under the sanitizers too (design §10).
+      env: |
+        NOT_CRAN=true
       profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
 
   valgrind:

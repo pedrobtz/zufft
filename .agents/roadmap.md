@@ -422,6 +422,17 @@ benchmark grid.
 
 **Design.** §10, §11, §14 items 2, 4, 6 and 7.
 
+**Deviations (2026-10-13).**
+- The fixtures come from the released SciPy 1.18.1 wheel (whose duccfft
+  vendors ducc0 `8e30567`), not from a SciPy built at commit `ecee36d`:
+  building SciPy from source needs a Fortran toolchain and BLAS, and with
+  D14 the criterion is the §10 tolerance, not bit-identity, so any SciPy on
+  the ducc0 backend is a sound oracle. `fixtures/scipy/MANIFEST` records
+  the release; the generator no longer checks the vendored commit.
+- The fixture set was trimmed to fit the 1 MB budget (2040 cases, 1.00 MB).
+- The long-vector gate could not run (no runner with about 50 GB), so long
+  vectors left the 0.1.0 scope as the design prescribes.
+
 ## Stage 9 — Documentation
 
 **Issue.** [#12](https://github.com/pedrobtz/zufft/issues/12), sub-issue of
