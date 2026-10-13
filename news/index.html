@@ -16,6 +16,11 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/migrating-from-fftwtools.html">Migrating from fftwtools</a></li>
+    <li><a class="dropdown-item" href="../articles/zufft-for-scipy-users.html">zufft for scipy.fft users</a></li>
+  </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -45,6 +50,8 @@
 <li>
 <code>workers</code> runs a transform on several threads, through zufft’s own lazy thread pool; <code><a href="../reference/fft_workers.html">fft_workers()</a></code>, <code><a href="../reference/fft_workers.html">with_fft_workers()</a></code> and <code><a href="../reference/fft_workers.html">local_fft_workers()</a></code> set the default. Results do not depend on the number of threads, and forked children (<code><a href="https://rdrr.io/r/parallel/mclapply.html" class="external-link">parallel::mclapply()</a></code>) are safe.</li>
 <li>A registered C table and the header <code>inst/include/zufft.h</code> let other packages call the transforms from C with <code>LinkingTo: zufft</code>, from any thread.</li>
+<li>
+<code><a href="../articles/migrating-from-fftwtools.html">vignette("migrating-from-fftwtools")</a></code> maps every fftwtools function to zufft; an article covers <code>scipy.fft</code> users.</li>
 <li>Bundles the BSD-licensed FFT subset of ducc0 (the files and commit SciPy vendors) and compiles it.</li>
 <li>
 <code><a href="../reference/zufft_info.html">zufft_info()</a></code> reports the vendored ducc0 and SciPy commits, the SIMD backend and width, fused multiply-add support, the threading mode and the complex path.</li>

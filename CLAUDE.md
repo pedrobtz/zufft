@@ -24,10 +24,11 @@ is the stage plan with exit criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 7. The R surface of design §5.1 and the C
-table of §7 (`inst/include/zufft.h`, `src/zff_api.cpp`) exist; `workers`
-runs on zufft’s own pool. Stage 8 adds SciPy fixtures and the full
-benchmark run. Benchmarks against fftwtools are in `bench/RESULTS.md`.
+Verified 2026-10-13: Stage 9. Everything in design §5.1 and §7 exists
+and is documented: reference pages, the fftwtools migration vignette,
+the scipy.fft article (`vignettes/articles/`, pkgdown only) and the
+README. Stage 10 is the release readiness pass. Benchmarks against
+fftwtools are in `bench/RESULTS.md`.
 
 ## Stage tracking
 
