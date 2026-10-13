@@ -893,6 +893,20 @@ AVX2 codelets at run time while CRAN-portable zufft is SSE2 on x86-64
 (§12.3). Results go in `bench/RESULTS.md` with the hardware, and this
 section is updated with the measured numbers.
 
+**Stage 8 Linux runs (2026-10-13, `benchmarks` workflow on
+pedrobtz/zufft#23, GitHub `ubuntu-latest`, 4 threads).** The portable
+build (SSE2, two doubles per vector, as CRAN builds it) is within 1.5× of
+fftwtools everywhere, worst 1.26× (1-D complex 100 000); the complex primes
+come in at 1.12× (100 003) and 1.09× (1 000 003), inside the 1.2× prime
+target this time (Stage 3's run missed it at 1.23×, so the target is met
+on one run and missed on another: shared-runner noise around a near tie).
+The opt-in native build (`CXX17FLAGS += -march=native`, AVX2 and FMA,
+four doubles per vector) is a median 1.27× faster than the portable one at
+one thread, up to 1.76× on 1-D lengths near 10 000 and 1.68× on the
+16 384 × 64 column case, and no faster on the largest multi-dimensional
+cases, which are memory-bound; against fftwtools its worst ratio is
+0.93×. Both builds are in `bench/RESULTS.md`.
+
 **Stage 8 full grid (2026-10-13).** The macOS section of
 `bench/RESULTS.md` now has `workers = 1` and `2` for every case. With two
 threads zufft is 2.9× to 10× faster than fftwtools on the
@@ -927,7 +941,7 @@ few thousand points.
 | --- | --- | --- | --- |
 | Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× | met: worst 1.02× | met: worst 1.44× |
 | Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) | met: 0.46–0.68× | met: 0.54–0.83× |
-| Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) | met: 0.69–1.02× | **missed**: complex 1 000 003 at 1.23× (100 003 at 1.11×, real 0.73–0.82×) |
+| Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) | met: 0.69–1.02× | **missed** in Stage 3 (complex 1 000 003 at 1.23×), met in Stage 8 (1.12× and 1.09×) |
 | 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | met with `axes = 2:1`: 1.87× (Stage 8 grid); **missed** with the default axes: 1.49× (Stage 6) | see `bench/RESULTS.md` |
 | `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× | met: 6.5× | met: 8.0× |
 | `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× | met: 651× | met: 624× |
