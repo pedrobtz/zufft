@@ -33,6 +33,11 @@ follow `scipy.fft`. Helpers such as `fft_next_len()`, `fft_freq()` and
 `fft_shift()` mirror SciPy’s `next_fast_len()`, `fftfreq()` and
 `fftshift()`.
 
+Under the hood, zufft uses [ducc0](https://github.com/mreineck/ducc),
+the C++ FFT library that SciPy also uses. ducc0 comes bundled with
+zufft, so `install.packages()` is all you need, with no system library
+to set up.
+
 ## Installation
 
 ``` r
