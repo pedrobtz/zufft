@@ -20,12 +20,12 @@ criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 2. The ducc0 FFT subset is vendored in
-`src/ducc0/` and compiles; `zufft_info()` is the only export. The shim has a
-complex-to-complex entry point, exercised through an internal 1-D call. The
-thread pool is a single-threaded placeholder until Stage 6. Stage 2 settled
-the two go/no-go questions of design §12: threads stay on for Windows, and
-complex vectors reach ducc0 zero-copy on GCC and clang.
+Verified 2026-10-13: Stage 3. `fft_c2c()`, `fft_r2c()` and `fft_c2r()` work
+over any axes with `n`, all four `norm` values and the condition classes of
+design §9; `zufft_info()` reports the build. DCT/DST, helpers,
+`fft_stats()`, the thread pool and the C table are later stages. `workers`
+is validated but every transform runs on one thread (placeholder pool).
+Benchmarks against fftwtools are in `bench/RESULTS.md`.
 
 ## Stage tracking
 
@@ -73,7 +73,12 @@ Rscript -e 'devtools::check()'                   # R CMD check
 Rscript -e 'devtools::build_readme()'            # README.Rmd -> README.md
 air format .                                     # format R sources
 tools/vendor/verify                              # vendored tree vs manifest
+tools/run-benchmarks --quick                     # design §11 grid, short
 ```
+
+`tools/run-benchmarks` needs zufft installed, plus `bench` and, for the
+comparison, `fftwtools` (system FFTW). The `benchmark` label on a pull
+request runs the full grid on a Linux runner.
 
 ## Testing conventions
 

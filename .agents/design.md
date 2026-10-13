@@ -368,7 +368,7 @@ fftwtools would run an inverse.
 | `mvfftw_r2c(x, HermConj = 0)` | `fft_r2c(x, axes = 1)` |
 | `mvfftw_c2r(X, HermConj = 0, n = n)` | `fft_c2r(X, n = n, axes = 1, norm = "none")` |
 | `fftw2d(x)`, `fftw_c2c_2d(x)`, `fftw3d(x)`, `fftw_c2c_xd(x)` | `fft_c2c(x)` |
-| `fftw_r2c_2d(x, HermConj = 0)`, `fftw_r2c_3d(x, HermConj = 0)` | `fft_r2c(x)` (last axis halved) |
+| `fftw_r2c_2d(x, HermConj = 0)`, `fftw_r2c_3d(x, HermConj = 0)` | `fft_r2c(x, axes = 2:1)`, `fft_r2c(x, axes = 3:1)` (FFTW is row-major, so fftwtools halves R's first axis; checked against fftwtools 0.9-11 in Stage 3) |
 | `mvfftw(..., fftplanopt = 1)` | nothing to do: plans are cached |
 | (none) | `workers`, `norm`, `n` padding, `axes`, DCT/DST, helpers |
 
@@ -771,8 +771,12 @@ length below the minimum, or an output beyond R's vector limits),
   including `norm = "none"` inverses, `HermConj` both ways and odd
   `c2r` lengths. On CRAN the tests skip if fftwtools is absent.
 - **`stats::fft()` as oracle.** `fft_c2c()` and `fft_stats()` agree with
-  `stats::fft()` and `mvfft()` within that tolerance for lengths 1–1024
-  and random arrays; `fft_stats()` reproduces their result structure and
+  `stats::fft()` and `mvfft()` within that tolerance for lengths 1–1024,
+  large composite lengths and random arrays. It is no oracle for large
+  prime lengths: its O(n²) pass misses the tolerance at n = 65 537 (error
+  1.2e-8 against a bound of 7.5e-9 on a pure tone, where zufft's error is
+  2.9e-11; measured in Stage 3), so primes are tested on pure tones, whose
+  spectrum is exact; `fft_stats()` reproduces their result structure and
   attributes exactly, and their help-page examples.
 - **Direct DFT.** For `n <= 64`, every transform against an O(n²)
   evaluation in R of the defining sum.
@@ -818,7 +822,18 @@ system FFTW's configuration (`fftw_version`, SIMD codelets) and zufft's
 `zufft_info()` are recorded with every run, because the system FFTW picks
 AVX2 codelets at run time while CRAN-portable zufft is SSE2 on x86-64
 (§12.3). Results go in `bench/RESULTS.md` with the hardware, and this
-section is updated with the measured numbers. None has been measured yet.
+section is updated with the measured numbers.
+
+**Measured (Stage 3, 2026-10-13, `workers = 1`).** On an Apple M-series
+arm64 laptop with Homebrew's FFTW 3 for fftwtools 0.9-11 (full table in
+`bench/RESULTS.md`), zufft is faster than fftwtools on 32 of the 33 grid
+points; the exception is the complex prime 1 000 003 at 1.02×. The
+smallest ratios are the multi-dimensional complex cases (0.19 for 128³,
+0.22 for 512²), where fftwtools' plan-per-call costs most. The Linux
+x86-64 numbers come from the `benchmarks` workflow on a GitHub runner and
+are recorded in `bench/RESULTS.md` beside these. Per-call R overhead is
+about 5 µs, so `stats::fft()` (no argument handling) stays faster below a
+few thousand points.
 
 **Grid.** 1-D complex and real, lengths 2^10, 2^16, 2^20, 2^22; `3^7 ×
 5^3`, `1e5`, `1e6`; primes 10 007, 100 003, 1 000 003. Column-wise: 2^10
@@ -828,14 +843,14 @@ section is updated with the measured numbers. None has been measured yet.
 
 **Targets (`workers = 1` unless stated):**
 
-| Case | Target |
-| --- | --- |
-| Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× |
-| Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) |
-| Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) |
-| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× |
-| `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× |
-| `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× |
+| Case | Target | macOS arm64 (Stage 3) |
+| --- | --- | --- |
+| Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× | met: worst 1.02× |
+| Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) | met: 0.46–0.68× |
+| Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) | met: 0.69–1.02× |
+| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | Stage 6 |
+| `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× | met: 6.5× |
+| `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× | met: 651× |
 
 **Where to expect a gap, and what to do about it.** The weakest cases
 are single 1-D transforms below the four-step threshold (§6.5): ducc0
