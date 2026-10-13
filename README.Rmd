@@ -131,8 +131,9 @@ for your own machine runs faster. It takes two steps in R:
 ``` r
 Sys.setenv(ZUFFT_CXXFLAGS = "-march=native")   # "-mcpu=native" on Apple silicon
 install.packages("zufft", type = "source")
-# or the development version, which always builds from source:
-# pak::pak("pedrobtz/zufft")
+# or the development version; pak reuses a cached build of the same
+# commit, which ignores the variable, so clear it first:
+# pak::cache_delete(package = "zufft"); pak::pak("pedrobtz/zufft")
 
 zufft::zufft_info()$simd_width   # 4 with AVX2, 8 with AVX-512; 2 is portable
 ```
