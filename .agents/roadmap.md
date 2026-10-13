@@ -33,7 +33,7 @@ portfolio requires. Stage numbers below are the roadmap's, not the design's.
 | 6 | [Thread pool](#stage-6--thread-pool) | [#9](https://github.com/pedrobtz/zufft/issues/9) | [#21](https://github.com/pedrobtz/zufft/pull/21) | 2026-10-13 |
 | 7 | [C table](#stage-7--c-table) | [#10](https://github.com/pedrobtz/zufft/issues/10) | [#22](https://github.com/pedrobtz/zufft/pull/22) | 2026-10-13 |
 | 8 | [Conformance and benchmarks](#stage-8--conformance-and-benchmarks) | [#11](https://github.com/pedrobtz/zufft/issues/11) | [#23](https://github.com/pedrobtz/zufft/pull/23) | 2026-10-13 |
-| 9 | [Documentation](#stage-9--documentation) | [#12](https://github.com/pedrobtz/zufft/issues/12) | | |
+| 9 | [Documentation](#stage-9--documentation) | [#12](https://github.com/pedrobtz/zufft/issues/12) |  | 2026-10-13 |
 | 10 | [v0.1.0 readiness](#stage-10--v010-readiness) | [#13](https://github.com/pedrobtz/zufft/issues/13) | | |
 
 ## Stage 0 — Package identity
