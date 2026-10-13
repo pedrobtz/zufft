@@ -27,3 +27,21 @@ Useful links:
 Authors:
 
 - Pedro Baltazar <pedrobtz@gmail.com> \[copyright holder\]
+
+Other contributors:
+
+- Martin Reinecke (ducc0, bundled in src/ducc0) \[contributor\]
+
+- Peter Bell (ducc0, bundled in src/ducc0) \[contributor, copyright
+  holder\]
+
+- Max-Planck-Society (ducc0, bundled in src/ducc0) \[copyright holder\]
+
+- Matteo Frigo (odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h)
+  \[copyright holder\]
+
+- Massachusetts Institute of Technology (odd-sized DCT-IV in
+  src/ducc0/fft/fft1d_impl.h) \[copyright holder\]
+
+- The TensorFlow Authors (helpers in src/ducc0/infra/threading.cc)
+  \[copyright holder\]

@@ -4,6 +4,24 @@
 
 - **Pedro Baltazar**. Author, maintainer, copyright holder.
 
+- **Martin Reinecke**. Contributor.  
+  ducc0, bundled in src/ducc0
+
+- **Peter Bell**. Contributor, copyright holder.  
+  ducc0, bundled in src/ducc0
+
+- **Max-Planck-Society**. Copyright holder.  
+  ducc0, bundled in src/ducc0
+
+- **Matteo Frigo**. Copyright holder.  
+  odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h
+
+- **Massachusetts Institute of Technology**. Copyright holder.  
+  odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h
+
+- **The TensorFlow Authors**. Copyright holder.  
+  helpers in src/ducc0/infra/threading.cc
+
 ## Citation
 
 Source:

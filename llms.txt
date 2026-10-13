@@ -33,5 +33,10 @@ You can install the development version of zufft from
 pak::pak("pedrobtz/zufft")
 ```
 
-# 
+# Package index
+
+## All functions
+
+- [`zufft_info()`](https://pedrobtz.github.io/zufft/reference/zufft_info.md)
+  : Information about the zufft build
 

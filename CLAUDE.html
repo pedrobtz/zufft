@@ -43,7 +43,7 @@
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Verified 2026-10-13: package identity only (Stage 0). Nothing of ducc0 is vendored and no transform exists yet. Stage 1 vendors ducc0 and sets up the build.</p>
+<p>Verified 2026-10-13: Stage 1. The ducc0 FFT subset is vendored in <code>src/ducc0/</code> and compiles; <code><a href="reference/zufft_info.html">zufft_info()</a></code> is the only export. No transform is exposed yet, and the thread pool is a single-threaded placeholder until Stage 6.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-tracking">Stage tracking<a class="anchor" aria-label="anchor" href="#stage-tracking"></a></h2>
@@ -75,7 +75,8 @@
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::test(shuffle = TRUE)'</span>      <span class="co"># order independence</span></span>
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::check()'</span>                   <span class="co"># R CMD check</span></span>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::build_readme()'</span>            <span class="co"># README.Rmd -&gt; README.md</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="ex">air</span> format .                                     <span class="co"># format R sources</span></span></code></pre></div>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="ex">air</span> format .                                     <span class="co"># format R sources</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="ex">tools/vendor/verify</span>                              <span class="co"># vendored tree vs manifest</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="testing-conventions">Testing conventions<a class="anchor" aria-label="anchor" href="#testing-conventions"></a></h2>
@@ -115,8 +116,19 @@
 <li>Keep hard runtime dependencies at zero.</li>
 </ul></div>
 <div class="section level2">
+<h2 id="vendored-native-code">Vendored native code<a class="anchor" aria-label="anchor" href="#vendored-native-code"></a></h2>
+<p><code>src/ducc0/</code> is the FFT component of ducc0, exactly the 17 files SciPy vendors in <code>subprojects/duccfft</code> (dual “BSD-3-Clause OR GPL-2.0-or-later”; zufft elects BSD-3). The rest of ducc0 is GPL-only: never copy anything else in.</p>
+<ul><li>
+<strong>Update only through the tool:</strong> <code>tools/vendor/vendor-ducc [SCIPY_COMMIT]</code> takes the ducc0 commit SciPy pins, checks every file against SciPy’s copy and the SPDX line, and rewrites <code>src/ducc0/</code>, <code>tools/vendor/manifest.tsv</code>, <code>tools/vendor/checksums.sha256</code> and <code>src/zff_version.h</code>. Re-vendor only when SciPy does (design §8).</li>
+<li>
+<code>tools/vendor/verify</code> is the offline check CI runs; never edit a file in <code>src/ducc0/</code>. Changes to vendored files go in <code>tools/vendor/patches/</code>, each with its reason; there is one, for clang <code>-pedantic</code> (CRAN’s debian-clang flavor). zufft’s adaptations live beside it: the custom threading header, the <code>.cc</code> wrappers and the instantiation units.</li>
+<li>
+<strong>No <code>-f</code>, <code>-m</code> or <code>-O</code> flag in <code>Makevars</code>.</strong> R CMD check warns about them (“checking compilation flags in Makevars”). Fused multiply-add contraction comes from <code>src/zff_fp_contract.h</code>, included first in each instantiation unit. <code>tools/check-build-log</code> fails CI on non-portable flags and on any compiled-code NOTE (abort, exit, stdio).</li>
+<li>Every holder named in the bundled files is in <code>Authors@R</code> and <code>inst/COPYRIGHTS</code>; a re-vendor must re-check that list.</li>
+</ul></div>
+<div class="section level2">
 <h2 id="continuous-integration">Continuous integration<a class="anchor" aria-label="anchor" href="#continuous-integration"></a></h2>
-<p>Workflows come from <code>pedrobtz/r-actions</code>, pinned to <code>@v1</code>: <code>r-cmd-check.yml</code> (quick on pull requests, full on <code>main</code>, full on a pull request with the <code>full-ci</code> label), <code>coverage.yml</code> and the pkgdown workflow.</p>
+<p>Workflows come from <code>pedrobtz/r-actions</code>, pinned to <code>@v1</code>: <code>r-cmd-check.yml</code> (quick on pull requests, full on <code>main</code>, full on a pull request with the <code>full-ci</code> label), <code>coverage.yml</code>, <code>vendor.yml</code> and the pkgdown workflow. <code>build-flags.yaml</code> is local: it fails on the NOTEs r-actions lets through.</p>
 </div>
 <div class="section level2">
 <h2 id="commits-and-pull-requests">Commits and pull requests<a class="anchor" aria-label="anchor" href="#commits-and-pull-requests"></a></h2>
