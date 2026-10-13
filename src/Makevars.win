@@ -14,6 +14,14 @@ PKG_CPPFLAGS = -I. -I../inst/include -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
 # an opt-in hook for a native build: make reads it from the environment
 # (for example ZUFFT_CXXFLAGS=-march=native), and it is empty unless the
 # user sets it, so CRAN builds and R CMD check see only $(CXX_VISIBILITY).
-PKG_CXXFLAGS = $(CXX_VISIBILITY) $(ZUFFT_CXXFLAGS)
+# Windows only: MinGW-w64 GCC does not align the stack to 32 bytes for AVX
+# values (GCC bug 54412), so a native build crashes on aligned vector moves.
+# When the user sets ZUFFT_CXXFLAGS, have the assembler emit unaligned moves
+# instead. Makevars.win may use GNU make conditionals (WRE 1.2.1); unset,
+# nothing is added.
+ifneq ($(strip $(ZUFFT_CXXFLAGS)),)
+ZUFFT_WIN_CXXFLAGS = -Wa,-muse-unaligned-vector-move
+endif
+PKG_CXXFLAGS = $(CXX_VISIBILITY) $(ZUFFT_CXXFLAGS) $(ZUFFT_WIN_CXXFLAGS)
 PKG_CFLAGS = $(C_VISIBILITY)
 PKG_LIBS = -pthread
