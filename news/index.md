@@ -43,6 +43,9 @@
   forked children
   ([`parallel::mclapply()`](https://rdrr.io/r/parallel/mclapply.html))
   are safe.
+- A registered C table and the header `inst/include/zufft.h` let other
+  packages call the transforms from C with `LinkingTo: zufft`, from any
+  thread.
 - Bundles the BSD-licensed FFT subset of ducc0 (the files and commit
   SciPy vendors) and compiles it.
 - [`zufft_info()`](https://pedrobtz.github.io/zufft/reference/zufft_info.md)

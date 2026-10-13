@@ -44,6 +44,7 @@
 <code><a href="../reference/fft_stats.html">fft_stats()</a></code> and <code><a href="../reference/fft_stats.html">mvfft_stats()</a></code> are drop-in replacements for <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code> and <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::mvfft()</a></code>.</li>
 <li>
 <code>workers</code> runs a transform on several threads, through zufft’s own lazy thread pool; <code><a href="../reference/fft_workers.html">fft_workers()</a></code>, <code><a href="../reference/fft_workers.html">with_fft_workers()</a></code> and <code><a href="../reference/fft_workers.html">local_fft_workers()</a></code> set the default. Results do not depend on the number of threads, and forked children (<code><a href="https://rdrr.io/r/parallel/mclapply.html" class="external-link">parallel::mclapply()</a></code>) are safe.</li>
+<li>A registered C table and the header <code>inst/include/zufft.h</code> let other packages call the transforms from C with <code>LinkingTo: zufft</code>, from any thread.</li>
 <li>Bundles the BSD-licensed FFT subset of ducc0 (the files and commit SciPy vendors) and compiles it.</li>
 <li>
 <code><a href="../reference/zufft_info.html">zufft_info()</a></code> reports the vendored ducc0 and SciPy commits, the SIMD backend and width, fused multiply-add support, the threading mode and the complex path.</li>
