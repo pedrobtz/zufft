@@ -2,17 +2,21 @@
 
 ## Authors
 
-- **First Last**. Author, maintainer.
+- **Pedro Baltazar**. Author, maintainer, copyright holder.
 
 ## Citation
 
-Last F (2026). *zufft: What the Package Does (One Line, Title Case)*. R
-package version 0.0.0.9000, <https://pedrobtz.github.io/zufft/>.
+Source:
+[`DESCRIPTION`](https://github.com/pedrobtz/zufft/blob/main/DESCRIPTION)
+
+Baltazar P (2026). *zufft: Fast Fourier, Cosine and Sine Transforms with
+a Bundled 'ducc0'*. R package version 0.0.0.9000,
+<https://github.com/pedrobtz/zufft>.
 
     @Manual{,
-      title = {zufft: What the Package Does (One Line, Title Case)},
-      author = {First Last},
+      title = {zufft: Fast Fourier, Cosine and Sine Transforms with a Bundled 'ducc0'},
+      author = {Pedro Baltazar},
       year = {2026},
       note = {R package version 0.0.0.9000},
-      url = {https://pedrobtz.github.io/zufft/},
+      url = {https://github.com/pedrobtz/zufft},
     }
