@@ -16,9 +16,15 @@ permissions:
 jobs:
   linux:
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'benchmark'
+    strategy:
+      fail-fast: false
+      matrix:
+        # portable: CRAN's flags (SSE2). native: the opt-in build of design
+        # §12.3, -march=native in the user's Makevars (AVX2 on the runner).
+        build: [portable, native]
     runs-on: ubuntu-latest
-    name: benchmarks (ubuntu-latest)
-    timeout-minutes: 60
+    name: benchmarks (ubuntu-latest, ${{ matrix.build }})
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
       - name: FFTW for fftwtools and fftw
@@ -31,16 +37,26 @@ jobs:
           dependencies: '"hard"'
           extra-packages: any::bench, any::fftwtools, any::fftw
       - name: install zufft
-        run: R CMD INSTALL .
-      - name: run the grid
+        env:
+          BUILD: ${{ matrix.build }}
         run: |
-          tools/run-benchmarks --label "Linux x86-64 (GitHub ubuntu-latest runner)" \
-            --out bench/results-linux-x86_64.md
-          cat bench/results-linux-x86_64.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$BUILD" = native ]; then
+            mkdir -p ~/.R
+            echo 'CXX17FLAGS += -march=native' >> ~/.R/Makevars
+          fi
+          R CMD INSTALL .
+          Rscript -e 'str(zufft::zufft_info()[c("simd_backend", "simd_width", "fma")])' 
+      - name: run the grid
+        env:
+          BUILD: ${{ matrix.build }}
+        run: |
+          tools/run-benchmarks --label "Linux x86-64 (GitHub ubuntu-latest runner, $BUILD build)" \
+            --workers 1,2 --out "bench/results-linux-x86_64-$BUILD.md"
+          cat "bench/results-linux-x86_64-$BUILD.md" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           lscpu | head -20 >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
-          name: benchmarks-linux-x86_64
-          path: bench/results-linux-x86_64.*
+          name: benchmarks-linux-x86_64-${{ matrix.build }}
+          path: bench/results-linux-x86_64-${{ matrix.build }}.*
