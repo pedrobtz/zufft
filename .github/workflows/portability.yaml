@@ -1,0 +1,71 @@
+# Stage 2 go/no-go evidence (design §12.1, §12.2).
+#
+# stress: 20 separate R processes per OS each create and tear down 200
+# thread pools and run 200 short parallel regions through each, on the
+# std::thread / std::mutex / std::condition_variable primitives zufft's
+# pool will use. A hang (SciPy's reason for disabling ducc0's threads on
+# MinGW-w64) fails the job at its timeout.
+#
+# marshal: builds the portable copy path of the complex boundary and runs
+# the test suite on it, so the fallback keeps working.
+on:
+  push:
+    branches: [main, master]
+    paths-ignore: ['**.md', '.agents/**', '_pkgdown.yml', 'docs/**']
+  pull_request:
+    paths-ignore: ['**.md', '.agents/**', '_pkgdown.yml', 'docs/**']
+
+name: portability
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  stress:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    name: thread stress (${{ matrix.os }})
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - name: install zufft
+        run: R CMD INSTALL .
+      - name: 20 consecutive stress runs
+        shell: bash
+        timeout-minutes: 25
+        run: |
+          for i in $(seq 1 20); do
+            Rscript -e 'nt <- 4L; t <- system.time(x <- zufft:::zff_thread_stress(nt, 200L, 200L)); stopifnot(x == 200 * 200 * nt * (nt + 1) / 2); cat(sprintf("run %s: %.2f s\n", commandArgs(TRUE)[1], t[["elapsed"]]))' "$i"
+          done
+
+  marshal:
+    runs-on: ubuntu-latest
+    name: complex marshal path
+    steps:
+      - uses: actions/checkout@v7
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat, any::withr
+      - name: build with ZFF_COMPLEX_MARSHAL
+        run: |
+          mkdir -p ~/.R
+          echo 'CXX17FLAGS += -DZFF_COMPLEX_MARSHAL' >> ~/.R/Makevars
+          R CMD INSTALL .
+      - name: tests on the marshal path
+        shell: Rscript {0}
+        run: |
+          stopifnot(zufft::zufft_info()$complex_path == "marshal")
+          testthat::test_local(".", load_package = "installed", stop_on_failure = TRUE)
