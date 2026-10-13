@@ -34,9 +34,11 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="zufft-0009000">zufft 0.0.0.9000<a class="anchor" aria-label="anchor" href="#zufft-0009000"></a></h2>
-<ul><li>Bundles the BSD-licensed FFT subset of ducc0 (the files and commit SciPy vendors) and compiles it; no transform is exposed yet.</li>
+<ul><li>
+<code><a href="../reference/fft_c2c.html">fft_c2c()</a></code>, <code><a href="../reference/fft_c2c.html">fft_r2c()</a></code> and <code><a href="../reference/fft_c2c.html">fft_c2r()</a></code> compute complex, real-to-complex and complex-to-real discrete Fourier transforms over any axes of an array, with SciPy’s crop-or-pad <code>n</code> and <code>norm = "backward"</code>, <code>"ortho"</code>, <code>"forward"</code> or <code>"none"</code> (the unnormalised convention of fftwtools and <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>). <code>workers</code> is accepted; every transform runs on one thread until the thread pool lands.</li>
+<li>Bundles the BSD-licensed FFT subset of ducc0 (the files and commit SciPy vendors) and compiles it.</li>
 <li>
-<code><a href="../reference/zufft_info.html">zufft_info()</a></code> reports the vendored ducc0 and SciPy commits, the SIMD backend and width, fused multiply-add support and the threading mode.</li>
+<code><a href="../reference/zufft_info.html">zufft_info()</a></code> reports the vendored ducc0 and SciPy commits, the SIMD backend and width, fused multiply-add support, the threading mode and the complex path.</li>
 </ul></div>
   </main></div>
 

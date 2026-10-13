@@ -38,12 +38,12 @@
 <p>This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.</p>
 <div class="section level2">
 <h2 id="what-this-is">What this is<a class="anchor" aria-label="anchor" href="#what-this-is"></a></h2>
-<p>zufft is an R package for fast Fourier, cosine and sine transforms. It is meant to replace <code>fftwtools</code> without FFTW: it bundles the BSD-licensed FFT subset of ducc0, the same files and commit SciPy vendors, so it needs no system library and carries no GPL code. The R API follows <code>scipy.fft</code> conventions (axes, <code>norm</code>, transform types) with names a fftwtools user recognises (<code>fft_c2c()</code>, <code>fft_r2c()</code>, <code>fft_c2r()</code>). It is also a provider: a registered C table lets other packages, first <code>zutsne</code>, call the transforms from C. Zero hard runtime dependencies.</p>
+<p>zufft is an R package for fast Fourier, cosine and sine transforms. It is meant to replace <code>fftwtools</code> without FFTW: it bundles the BSD-licensed FFT subset of ducc0, the same files and commit SciPy vendors, so it needs no system library and carries no GPL code. The R API follows <code>scipy.fft</code> conventions (axes, <code>norm</code>, transform types) with names a fftwtools user recognises (<code><a href="reference/fft_c2c.html">fft_c2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_r2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_c2r()</a></code>). It is also a provider: a registered C table lets other packages, first <code>zutsne</code>, call the transforms from C. Zero hard runtime dependencies.</p>
 <p><a href=".agents/design.html">.agents/design.md</a> is the specification and outranks this file. <a href=".agents/roadmap.html">.agents/roadmap.md</a> is the stage plan with exit criteria.</p>
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Verified 2026-10-13: Stage 2. The ducc0 FFT subset is vendored in <code>src/ducc0/</code> and compiles; <code><a href="reference/zufft_info.html">zufft_info()</a></code> is the only export. The shim has a complex-to-complex entry point, exercised through an internal 1-D call. The thread pool is a single-threaded placeholder until Stage 6. Stage 2 settled the two go/no-go questions of design §12: threads stay on for Windows, and complex vectors reach ducc0 zero-copy on GCC and clang.</p>
+<p>Verified 2026-10-13: Stage 3. <code><a href="reference/fft_c2c.html">fft_c2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_r2c()</a></code> and <code><a href="reference/fft_c2c.html">fft_c2r()</a></code> work over any axes with <code>n</code>, all four <code>norm</code> values and the condition classes of design §9; <code><a href="reference/zufft_info.html">zufft_info()</a></code> reports the build. DCT/DST, helpers, <code>fft_stats()</code>, the thread pool and the C table are later stages. <code>workers</code> is validated but every transform runs on one thread (placeholder pool). Benchmarks against fftwtools are in <code>bench/RESULTS.md</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-tracking">Stage tracking<a class="anchor" aria-label="anchor" href="#stage-tracking"></a></h2>
@@ -76,7 +76,9 @@
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::check()'</span>                   <span class="co"># R CMD check</span></span>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::build_readme()'</span>            <span class="co"># README.Rmd -&gt; README.md</span></span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="ex">air</span> format .                                     <span class="co"># format R sources</span></span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="ex">tools/vendor/verify</span>                              <span class="co"># vendored tree vs manifest</span></span></code></pre></div>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="ex">tools/vendor/verify</span>                              <span class="co"># vendored tree vs manifest</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="ex">tools/run-benchmarks</span> <span class="at">--quick</span>                     <span class="co"># design §11 grid, short</span></span></code></pre></div>
+<p><code>tools/run-benchmarks</code> needs zufft installed, plus <code>bench</code> and, for the comparison, <code>fftwtools</code> (system FFTW). The <code>benchmark</code> label on a pull request runs the full grid on a Linux runner.</p>
 </div>
 <div class="section level2">
 <h2 id="testing-conventions">Testing conventions<a class="anchor" aria-label="anchor" href="#testing-conventions"></a></h2>
