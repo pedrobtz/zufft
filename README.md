@@ -11,10 +11,9 @@
 
 ## Overview
 
-zufft wraps [ducc0](https://github.com/mreineck/ducc), the C++ FFT
-library that SciPy also uses. ducc0 comes bundled with zufft, so there’s
-nothing else to install. zufft provides fast Fourier transforms (FFTs),
-along with discrete cosine and sine transforms (DCTs and DSTs):
+zufft wraps [ducc0](https://github.com/mreineck/ducc), the C++ library
+behind `scipy.fft`, to provide fast Fourier transforms (FFTs) and
+discrete cosine and sine transforms (DCTs and DSTs):
 
 | zufft | stats | fftwtools | Computes |
 |----|----|----|----|
