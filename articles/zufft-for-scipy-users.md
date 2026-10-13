@@ -17,8 +17,8 @@ library(zufft)
 | `fft(x, n, axis)` | `fft_c2c(x, n = n, axes = axis + 1)` |
 | `ifft` | `fft_c2c(..., inverse = TRUE)` |
 | `fft2`, `fftn(x, s, axes)` | `fft_c2c(x, n = s, axes = axes + 1)` |
-| `rfft`, `rfft2`, `rfftn` | [`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md) |
-| `irfft`, `irfft2`, `irfftn` | [`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md) |
+| `rfft`, `rfft2`, `rfftn` | `fft_r2c(x, axes = seq_along(dim(x)))` (see below) |
+| `irfft`, `irfft2`, `irfftn` | `fft_c2r(x, axes = seq_along(dim(x)))` |
 | `dct`, `dctn` | [`fft_dct()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md) |
 | `idct`, `idctn` | `fft_dct(..., inverse = TRUE)` |
 | `dst`, `dstn`, `idst`, `idstn` | [`fft_dst()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md) |
@@ -73,18 +73,23 @@ For the cosine and sine transforms, `orthogonalize` defaults to
 `norm == "ortho"`, as in SciPy. Like SciPy, zufft ignores an explicit
 `orthogonalize` for complex input.
 
-## Speed in R
+## The halved axis
 
-R stores arrays column by column, so the contiguous axis is the first,
-where in NumPy it is the last. The real transforms halve the last axis
-you list, as SciPy does. Listing the first axis last halves the
-contiguous axis and is often much faster:
+The real transforms halve one axis. SciPy halves the last axis listed,
+and with `axes` given, so does zufft. With `axes = NULL`, though, zufft
+halves the *first* dimension. R stores arrays column by column, so the
+first dimension is the contiguous one (in NumPy it is the last), and
+halving it is the fast choice, about 1.8 times faster for a large
+matrix. To get `scipy.fft.rfftn()`’s layout, list the axes in order:
 
 ``` r
 
 m <- matrix(rnorm(512 * 512), 512)
-dim(fft_r2c(m))            # SciPy's order: halves axis 2
-#> [1] 512 257
-dim(fft_r2c(m, axes = 2:1)) # halves axis 1, the fast one in R
+dim(fft_r2c(m))                           # halves dimension 1, the fast one
 #> [1] 257 512
+dim(fft_r2c(m, axes = seq_along(dim(m)))) # as rfftn(): halves dimension 2
+#> [1] 512 257
 ```
+
+With `axes = NULL`, `n` still lists one length per dimension, in
+dimension order.

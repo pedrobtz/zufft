@@ -48,22 +48,28 @@ fft_dst(
 
 - n:
 
-  Transform lengths, one per transformed axis (no recycling). Each axis
-  of `x` is cropped or zero-padded to its length first. `NULL` keeps the
-  lengths of `x`. For
+  Transform lengths, one per transformed axis in the order of `axes` (no
+  recycling); with `axes = NULL`, one per dimension, in dimension order.
+  Each axis of `x` is cropped or zero-padded to its length first. `NULL`
+  keeps the lengths of `x`. For
   [`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md),
-  `n` gives the lengths of the real output; the last transformed axis of
-  `x` must then hold `n %/% 2 + 1` values and is cropped or padded to
-  that. Its default is `2 * (m - 1)` for an input extent `m`, which is
-  always even: give `n` to recover an odd length.
+  `n` gives the lengths of the real output; the halved axis of `x` must
+  then hold `n %/% 2 + 1` values and is cropped or padded to that. Its
+  default is `2 * (m - 1)` for an input extent `m`, which is always
+  even: give `n` to recover an odd length.
 
 - axes:
 
   The dimensions to transform, 1-based, without repeats. `NULL` means
-  all of them, in order. For the real transforms the last listed axis is
-  the one that is halved. Use `axes = 1` for a column-wise transform of
-  a matrix, as [`stats::mvfft()`](https://rdrr.io/r/stats/fft.html)
-  does.
+  all of them, in order; for
+  [`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
+  and
+  [`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
+  it means all of them in reverse order, so the first dimension is
+  halved. With explicit `axes`, the real transforms halve the last axis
+  listed, as SciPy does: `axes = seq_along(dim(x))` halves the last
+  dimension. Use `axes = 1` for a column-wise transform of a matrix, as
+  [`stats::mvfft()`](https://rdrr.io/r/stats/fft.html) does.
 
 - norm:
 

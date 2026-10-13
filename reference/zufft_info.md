@@ -35,6 +35,13 @@ A named list:
 
   `TRUE` if the target has fused multiply-add.
 
+- `fp_contract`:
+
+  `"off"` when the transforms never fuse multiply-adds, so results are
+  bit-identical whatever `workers` is; `"fast"` for a GCC build
+  targeting FMA hardware, where they can differ in the last bit. CRAN's
+  builds are `"off"`.
+
 - `threading`:
 
   `"zufft"` when zufft supplies the thread pool, `"none"` when threads

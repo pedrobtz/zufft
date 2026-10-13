@@ -13,6 +13,16 @@ First release.
   `norm = "backward"`, `"ortho"`, `"forward"` or `"none"` (the
   unnormalised convention of fftwtools and
   [`stats::fft()`](https://rdrr.io/r/stats/fft.html)).
+- With `axes = NULL`,
+  [`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
+  and
+  [`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
+  halve the first dimension, the contiguous one in R, as fftwtools’ 2-D
+  and 3-D real transforms do; give `axes` explicitly to halve the last
+  axis listed, as SciPy does.
+- Results are bit-identical whatever the number of threads:
+  `zufft_info()$fp_contract` is `"off"` for every build that cannot fuse
+  multiply-adds, which includes all of CRAN’s.
 - [`fft_dct()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md)
   and
   [`fft_dst()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md)

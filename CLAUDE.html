@@ -48,7 +48,7 @@
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Verified 2026-10-13: version 0.1.0, ready for CRAN submission. Every stage of the roadmap is merged; <code>cran-comments.md</code> lists the CI legs. What remains is the submission itself, tracked in <a href="https://github.com/pedrobtz/zufft/issues/14" class="external-link">CRAN-submission (#14)</a>. Open design questions 9 (default axis order of the real transforms) and 10 (contraction or thread-count independence) are the maintainer’s to decide. Benchmarks against fftwtools are in <code>bench/RESULTS.md</code>.</p>
+<p>Verified 2026-10-13: version 0.1.0, ready for CRAN submission. Every stage of the roadmap is merged; <code>cran-comments.md</code> lists the CI legs. What remains is the submission itself, tracked in <a href="https://github.com/pedrobtz/zufft/issues/14" class="external-link">CRAN-submission (#14)</a>. Design questions 9 and 10 are decided: the real transforms halve the first dimension by default, and fused multiply-add contraction is off so results do not depend on <code>workers</code>. Benchmarks against fftwtools are in <code>bench/RESULTS.md</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-tracking">Stage tracking<a class="anchor" aria-label="anchor" href="#stage-tracking"></a></h2>
@@ -143,7 +143,7 @@
 <li>
 <code>tools/vendor/verify</code> is the offline check CI runs; never edit a file in <code>src/ducc0/</code>. Changes to vendored files go in <code>tools/vendor/patches/</code>, each with its reason; there are two, for clang <code>-pedantic</code> (CRAN’s debian-clang flavor) and for a UBSan finding in the DCT/DST plans. zufft’s adaptations live beside it: the custom threading header, the <code>.cc</code> wrappers and the instantiation units.</li>
 <li>
-<strong>No <code>-f</code>, <code>-m</code> or <code>-O</code> flag in <code>Makevars</code>.</strong> R CMD check warns about them (“checking compilation flags in Makevars”). Fused multiply-add contraction comes from <code>src/zff_fp_contract.h</code>, included first in each instantiation unit. <code>tools/check-build-log</code> fails CI on non-portable flags and on any compiled-code NOTE (abort, exit, stdio).</li>
+<strong>No <code>-f</code>, <code>-m</code> or <code>-O</code> flag in <code>Makevars</code>.</strong> R CMD check warns about them (“checking compilation flags in Makevars”). Fused multiply-add contraction is switched off by <code>src/zff_fp_contract.h</code>, included first in each instantiation unit. <code>tools/check-build-log</code> fails CI on non-portable flags and on any compiled-code NOTE (abort, exit, stdio).</li>
 <li>Every holder named in the bundled files is in <code>Authors@R</code> and <code>inst/COPYRIGHTS</code>; a re-vendor must re-check that list.</li>
 </ul></div>
 <div class="section level2">

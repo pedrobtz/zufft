@@ -108,18 +108,18 @@ all.equal(fft_c2r(M, n = 6, axes = 1, norm = "none"), fftwtools::mvfftw_c2r(M, H
 | fftwtools | zufft |
 |----|----|
 | `fftw2d(x)`, `fftw_c2c_2d(x)`, `fftw3d(x)`, `fftw_c2c_3d(x)`, `fftw_c2c_xd(x)` | `fft_c2c(x)` |
-| `fftw_r2c_2d(x, HermConj = 0)` | `fft_r2c(x, axes = 2:1)` |
-| `fftw_r2c_3d(x, HermConj = 0)` | `fft_r2c(x, axes = 3:1)` |
+| `fftw_r2c_2d(x, HermConj = 0)` | `fft_r2c(x)` |
+| `fftw_r2c_3d(x, HermConj = 0)` | `fft_r2c(x)` |
 
 FFTW stores arrays row by row, so fftwtools’ real 2-D and 3-D transforms
-halve R’s *first* dimension. zufft halves the last axis you list, so
-list the first axis last. That is also the faster order in R, where the
-first axis is the contiguous one.
+halve R’s *first* dimension. zufft’s real transforms do the same by
+default: in R the first dimension is the contiguous one, and halving it
+is the fast choice.
 
 ``` r
 
 x2 <- matrix(rnorm(35), 5, 7)
-all.equal(fft_r2c(x2, axes = 2:1), fftwtools::fftw_r2c_2d(x2, HermConj = 0))
+all.equal(fft_r2c(x2), fftwtools::fftw_r2c_2d(x2, HermConj = 0))
 #> [1] TRUE
 all.equal(fft_c2c(x2), fftwtools::fftw2d(x2))
 #> [1] TRUE

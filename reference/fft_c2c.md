@@ -51,10 +51,11 @@ fft_c2r(
 
 - n:
 
-  Transform lengths, one per transformed axis (no recycling). Each axis
-  of `x` is cropped or zero-padded to its length first. `NULL` keeps the
-  lengths of `x`. For `fft_c2r()`, `n` gives the lengths of the real
-  output; the last transformed axis of `x` must then hold `n %/% 2 + 1`
+  Transform lengths, one per transformed axis in the order of `axes` (no
+  recycling); with `axes = NULL`, one per dimension, in dimension order.
+  Each axis of `x` is cropped or zero-padded to its length first. `NULL`
+  keeps the lengths of `x`. For `fft_c2r()`, `n` gives the lengths of
+  the real output; the halved axis of `x` must then hold `n %/% 2 + 1`
   values and is cropped or padded to that. Its default is `2 * (m - 1)`
   for an input extent `m`, which is always even: give `n` to recover an
   odd length.
@@ -62,10 +63,12 @@ fft_c2r(
 - axes:
 
   The dimensions to transform, 1-based, without repeats. `NULL` means
-  all of them, in order. For the real transforms the last listed axis is
-  the one that is halved. Use `axes = 1` for a column-wise transform of
-  a matrix, as [`stats::mvfft()`](https://rdrr.io/r/stats/fft.html)
-  does.
+  all of them, in order; for `fft_r2c()` and `fft_c2r()` it means all of
+  them in reverse order, so the first dimension is halved. With explicit
+  `axes`, the real transforms halve the last axis listed, as SciPy does:
+  `axes = seq_along(dim(x))` halves the last dimension. Use `axes = 1`
+  for a column-wise transform of a matrix, as
+  [`stats::mvfft()`](https://rdrr.io/r/stats/fft.html) does.
 
 - norm:
 
@@ -98,15 +101,13 @@ are dropped.
 The conventions are those of `scipy.fft` (`fft`, `fftn`, `rfftn`,
 `irfftn`): `n` crops or zero-pads each transformed axis before the
 transform, and `norm` chooses where the scaling goes. They differ from
-SciPy in two ways: `axes` are 1-based, and `axes = NULL` means every
-dimension rather than the last one.
-
-Speed: R stores arrays column by column, so the first axis is the
-contiguous one, whereas in NumPy it is the last. The real transforms
-halve the last listed axis, as SciPy does; listing the first axis last,
-for example `fft_r2c(m, axes = 2:1)` for a matrix, halves the contiguous
-axis and is often much faster (about 1.8 times for a 2048 x 2048
-matrix).
+SciPy in three ways: `axes` are 1-based; `axes = NULL` means every
+dimension rather than the last one; and with `axes = NULL` the real
+transforms halve the *first* dimension, not the last. R stores arrays
+column by column, so the first dimension is the contiguous one, and
+halving it is the fast choice (about 1.8 times faster than halving the
+last for a 2048 x 2048 matrix). It is also what fftwtools' 2-D and 3-D
+real transforms do.
 
 Coming from fftwtools: `fft_c2c(x)` is `fftw(x)` and `fftw_r2c(x)`,
 `fft_r2c(x)` is `fftw_r2c(x, HermConj = 0)`, and an fftwtools inverse is
@@ -145,10 +146,14 @@ fft_c2c(m, axes = 1)
 #> [2,]  1.037220-0.2608883i  2.4433704-1.395737i  0.3094998+0.9116875i
 #> [3,] -4.087053+0.0000000i -2.1013512+0.000000i -1.1441756+0.0000000i
 #> [4,]  1.037220+0.2608883i  2.4433704+1.395737i  0.3094998-0.9116875i
-fft_r2c(m)
-#>                      [,1]                 [,2]
-#> [1,] -4.338362+0.0000000i -3.212161-0.1320202i
-#> [2,]  3.790090-0.7449378i -2.337503-1.8668498i
-#> [3,] -7.332580+0.0000000i -2.464289+0.8289384i
-#> [4,]  3.790090+0.7449378i  1.659073-1.8291225i
+dim(fft_r2c(m))                 # halves the first dimension: 3 x 3
+#> [1] 3 3
+dim(fft_r2c(m, axes = 1:2))     # SciPy's choice, the last: 4 x 2
+#> [1] 4 2
+fft_c2r(fft_r2c(m), n = dim(m)) # back to m
+#>              [,1]       [,2]       [,3]
+#> [1,] -1.400043517  0.6215527 -0.2441996
+#> [2,]  0.255317055  1.1484116 -0.2827054
+#> [3,] -2.437263611 -1.8218177 -0.5536994
+#> [4,] -0.005571287 -0.2473253  0.6289820
 ```

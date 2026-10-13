@@ -234,21 +234,21 @@ zufft that is <code>axes = 1</code>.</p>
 </tr>
 <tr class="even">
 <td><code>fftw_r2c_2d(x, HermConj = 0)</code></td>
-<td><code>fft_r2c(x, axes = 2:1)</code></td>
+<td><code>fft_r2c(x)</code></td>
 </tr>
 <tr class="odd">
 <td><code>fftw_r2c_3d(x, HermConj = 0)</code></td>
-<td><code>fft_r2c(x, axes = 3:1)</code></td>
+<td><code>fft_r2c(x)</code></td>
 </tr>
 </tbody>
 </table>
 <p>FFTW stores arrays row by row, so fftwtools’ real 2-D and 3-D
-transforms halve R’s <em>first</em> dimension. zufft halves the last
-axis you list, so list the first axis last. That is also the faster
-order in R, where the first axis is the contiguous one.</p>
+transforms halve R’s <em>first</em> dimension. zufft’s real transforms
+do the same by default: in R the first dimension is the contiguous one,
+and halving it is the fast choice.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">35</span><span class="op">)</span>, <span class="fl">5</span>, <span class="fl">7</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="../reference/fft_c2c.html">fft_r2c</a></span><span class="op">(</span><span class="va">x2</span>, axes <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">1</span><span class="op">)</span>, <span class="fu">fftwtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fftwtools/man/fftw2d.html" class="external-link">fftw_r2c_2d</a></span><span class="op">(</span><span class="va">x2</span>, HermConj <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="../reference/fft_c2c.html">fft_r2c</a></span><span class="op">(</span><span class="va">x2</span><span class="op">)</span>, <span class="fu">fftwtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fftwtools/man/fftw2d.html" class="external-link">fftw_r2c_2d</a></span><span class="op">(</span><span class="va">x2</span>, HermConj <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="../reference/fft_c2c.html">fft_c2c</a></span><span class="op">(</span><span class="va">x2</span><span class="op">)</span>, <span class="fu">fftwtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/fftwtools/man/fftw2d.html" class="external-link">fftw2d</a></span><span class="op">(</span><span class="va">x2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>

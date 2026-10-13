@@ -94,19 +94,22 @@ input is transformed as its real and imaginary parts separately.</p></dd>
 
 
 <dt id="arg-n">n<a class="anchor" aria-label="anchor" href="#arg-n"></a></dt>
-<dd><p>Transform lengths, one per transformed axis (no recycling).
-Each axis of <code>x</code> is cropped or zero-padded to its length first. <code>NULL</code>
-keeps the lengths of <code>x</code>. For <code><a href="fft_c2c.html">fft_c2r()</a></code>, <code>n</code> gives the lengths of the
-real output; the last transformed axis of <code>x</code> must then hold
-<code>n %/% 2 + 1</code> values and is cropped or padded to that. Its default is
-<code>2 * (m - 1)</code> for an input extent <code>m</code>, which is always even: give <code>n</code>
-to recover an odd length.</p></dd>
+<dd><p>Transform lengths, one per transformed axis in the order of
+<code>axes</code> (no recycling); with <code>axes = NULL</code>, one per dimension, in
+dimension order. Each axis of <code>x</code> is cropped or zero-padded to its
+length first. <code>NULL</code> keeps the lengths of <code>x</code>. For <code><a href="fft_c2c.html">fft_c2r()</a></code>, <code>n</code>
+gives the lengths of the real output; the halved axis of <code>x</code> must then
+hold <code>n %/% 2 + 1</code> values and is cropped or padded to that. Its default
+is <code>2 * (m - 1)</code> for an input extent <code>m</code>, which is always even: give
+<code>n</code> to recover an odd length.</p></dd>
 
 
 <dt id="arg-axes">axes<a class="anchor" aria-label="anchor" href="#arg-axes"></a></dt>
 <dd><p>The dimensions to transform, 1-based, without repeats. <code>NULL</code>
-means all of them, in order. For the real transforms the last listed
-axis is the one that is halved. Use <code>axes = 1</code> for a column-wise
+means all of them, in order; for <code><a href="fft_c2c.html">fft_r2c()</a></code> and <code><a href="fft_c2c.html">fft_c2r()</a></code> it means
+all of them in reverse order, so the first dimension is halved. With
+explicit <code>axes</code>, the real transforms halve the last axis listed, as
+SciPy does: <code>axes = seq_along(dim(x))</code> halves the last dimension. Use <code>axes = 1</code> for a column-wise
 transform of a matrix, as <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::mvfft()</a></code> does.</p></dd>
 
 

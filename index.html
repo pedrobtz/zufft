@@ -63,7 +63,7 @@
 <li>
 <strong>Replaces fftwtools without FFTW.</strong> <code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code> is enough, on every platform, and the licence is MIT.</li>
 <li>
-<strong>Fast.</strong> Faster than fftwtools on most of the benchmark grid and within 1.5 times on the rest; threads help further.</li>
+<strong>Fast.</strong> With CRAN’s build, faster than fftwtools on 30 of 33 benchmark cases and within 1.26 times on the rest; threads help further.</li>
 <li>
 <strong>Familiar.</strong> Names a fftwtools user knows (<code><a href="reference/fft_c2c.html">fft_c2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_r2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_c2r()</a></code>), the conventions of <code>scipy.fft</code> for axes, normalisation and cosine and sine transforms, and drop-in replacements for <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code> and <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::mvfft()</a></code>.</li>
 </ul>
@@ -116,55 +116,64 @@
 <div class="section level2">
 <h2 id="speed">Speed<a class="anchor" aria-label="anchor" href="#speed"></a>
 </h2>
-<p>Medians on an Apple M-series laptop, against fftwtools on Homebrew’s FFTW, from <code>bench/RESULTS.md</code> (which also has a Linux x86-64 runner):</p>
+<p>zufft does not need a native build to keep up with fftwtools. On a Linux x86-64 runner, against fftwtools on Ubuntu’s FFTW (built with SSE2 and AVX vector code), one thread, from <code>bench/RESULTS.md</code>:</p>
 <table class="table">
-<colgroup>
-<col width="36%">
-<col width="23%">
-<col width="25%">
-<col width="15%">
-</colgroup>
 <thead><tr>
 <th>Case</th>
-<th>zufft, 1 thread</th>
-<th>zufft, 2 threads</th>
 <th>fftwtools</th>
+<th>zufft, CRAN build</th>
+<th>ratio</th>
+<th>zufft native, ratio</th>
 </tr></thead>
 <tbody>
 <tr>
 <td>1-D complex 1 048 576</td>
-<td>11.94 ms</td>
-<td>6.98 ms</td>
-<td>20.47 ms</td>
+<td>27.02 ms</td>
+<td>20.64 ms</td>
+<td>0.76</td>
+<td>0.59</td>
 </tr>
 <tr>
 <td>1-D real 1 000 000</td>
-<td>6.47 ms</td>
-<td>3.91 ms</td>
-<td>8.95 ms</td>
+<td>16.50 ms</td>
+<td>11.77 ms</td>
+<td>0.71</td>
+<td>0.57</td>
 </tr>
 <tr>
 <td>columns real 1024 × 1024</td>
-<td>1.64 ms</td>
-<td>898.6 µs</td>
-<td>3.21 ms</td>
+<td>5.97 ms</td>
+<td>2.55 ms</td>
+<td>0.43</td>
+<td>0.34</td>
 </tr>
 <tr>
 <td>2-D complex 2048²</td>
-<td>38.19 ms</td>
-<td>20.31 ms</td>
-<td>123.25 ms</td>
+<td>279.85 ms</td>
+<td>67.76 ms</td>
+<td>0.24</td>
+<td>0.19</td>
 </tr>
 <tr>
 <td>3-D complex 128³</td>
-<td>16.29 ms</td>
-<td>9.20 ms</td>
-<td>88.70 ms</td>
+<td>44.80 ms</td>
+<td>34.10 ms</td>
+<td>0.76</td>
+<td>0.83</td>
+</tr>
+<tr>
+<td>1-D complex 100 000</td>
+<td>1.44 ms</td>
+<td>1.81 ms</td>
+<td>1.26</td>
+<td>0.83</td>
 </tr>
 </tbody>
 </table>
-<p>zufft caches its plans, where fftwtools plans every call, and transforms of any length run in O(n log n): a prime length of 100 003 takes 6.39 ms here against 4.17 s for <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>.</p>
-<p>R stores arrays column by column, so the first axis is the contiguous one. The real transforms halve the last axis listed, as SciPy does; for speed, list the first axis last, as in <code>fft_r2c(m, axes = 2:1)</code>.</p>
+<p>A ratio below 1 means zufft is faster. With CRAN’s portable build (SSE2), zufft is faster on 30 of the 33 benchmark cases. The three where it is slower are single 1-D complex transforms of about 10^5 to 10^6 points that cannot be split into lines (worst 1.26 times). Built for the local CPU (below, AVX2 here), zufft is faster on all 33. Each ratio compares runs on the same machine; the two builds ran on separate runners.</p>
+<p>Most of the margin comes from planning: zufft caches its plans, while fftwtools builds a new FFTW plan on every call. Threads add more (<code>workers = 2</code>), which fftwtools does not offer. Transforms of any length run in O(n log n): a prime length of 100 003 takes milliseconds, against seconds for <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>.</p>
+<p>On Apple silicon the gap is wider, but partly because Homebrew’s FFTW has no vector code for double precision there; <code>bench/RESULTS.md</code> has those numbers too.</p>
+<p>R stores arrays column by column, so the first dimension is the contiguous one. With <code>axes = NULL</code> the real transforms halve that dimension, which is fast and matches fftwtools; give <code>axes</code> explicitly to halve the last one listed, as SciPy does. Results are bit-identical whatever the number of threads.</p>
 <p><strong>A native build</strong> is the user’s choice: CRAN’s binaries use the portable SSE2 (x86-64) or NEON (arm64) vector width. To compile for your own CPU, add this line to <code>~/.R/Makevars</code> and reinstall from source:</p>
 <pre><code>CXX17FLAGS += -march=native</code></pre>
 <p><code>zufft_info()$simd_width</code> then reports the width you got. On the Linux x86-64 runner of <code>bench/RESULTS.md</code>, where this gives AVX2, the 16384 × 64 complex column case drops from 15.39 ms to 9.17 ms and a complex prime length of 10 007 from 659.6 µs to 389.5 µs.</p>

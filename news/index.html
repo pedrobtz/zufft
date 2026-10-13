@@ -42,6 +42,8 @@
 <p>First release.</p>
 <ul><li>
 <code><a href="../reference/fft_c2c.html">fft_c2c()</a></code>, <code><a href="../reference/fft_c2c.html">fft_r2c()</a></code> and <code><a href="../reference/fft_c2c.html">fft_c2r()</a></code> compute complex, real-to-complex and complex-to-real discrete Fourier transforms over any axes of an array, with SciPy’s crop-or-pad <code>n</code> and <code>norm = "backward"</code>, <code>"ortho"</code>, <code>"forward"</code> or <code>"none"</code> (the unnormalised convention of fftwtools and <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>).</li>
+<li>With <code>axes = NULL</code>, <code><a href="../reference/fft_c2c.html">fft_r2c()</a></code> and <code><a href="../reference/fft_c2c.html">fft_c2r()</a></code> halve the first dimension, the contiguous one in R, as fftwtools’ 2-D and 3-D real transforms do; give <code>axes</code> explicitly to halve the last axis listed, as SciPy does.</li>
+<li>Results are bit-identical whatever the number of threads: <code>zufft_info()$fp_contract</code> is <code>"off"</code> for every build that cannot fuse multiply-adds, which includes all of CRAN’s.</li>
 <li>
 <code><a href="../reference/fft_dct.html">fft_dct()</a></code> and <code><a href="../reference/fft_dct.html">fft_dst()</a></code> compute discrete cosine and sine transforms of types 1 to 4 and their inverses over any axes, with SciPy’s definitions, <code>norm</code> and <code>orthogonalize</code>.</li>
 <li>

@@ -103,13 +103,14 @@ in R and in Python agree to rounding. The test suite checks this against
 <td>
 <code>rfft</code>, <code>rfft2</code>, <code>rfftn</code>
 </td>
-<td><code><a href="../reference/fft_c2c.html">fft_r2c()</a></code></td>
+<td>
+<code>fft_r2c(x, axes = seq_along(dim(x)))</code> (see below)</td>
 </tr>
 <tr class="odd">
 <td>
 <code>irfft</code>, <code>irfft2</code>, <code>irfftn</code>
 </td>
-<td><code><a href="../reference/fft_c2c.html">fft_c2r()</a></code></td>
+<td><code>fft_c2r(x, axes = seq_along(dim(x)))</code></td>
 </tr>
 <tr class="even">
 <td>
@@ -206,18 +207,23 @@ defaults to <code>norm == "ortho"</code>, as in SciPy. Like SciPy, zufft
 ignores an explicit <code>orthogonalize</code> for complex input.</p>
 </div>
 <div class="section level2">
-<h2 id="speed-in-r">Speed in R<a class="anchor" aria-label="anchor" href="#speed-in-r"></a>
+<h2 id="the-halved-axis">The halved axis<a class="anchor" aria-label="anchor" href="#the-halved-axis"></a>
 </h2>
-<p>R stores arrays column by column, so the contiguous axis is the
-first, where in NumPy it is the last. The real transforms halve the last
-axis you list, as SciPy does. Listing the first axis last halves the
-contiguous axis and is often much faster:</p>
+<p>The real transforms halve one axis. SciPy halves the last axis
+listed, and with <code>axes</code> given, so does zufft. With
+<code>axes = NULL</code>, though, zufft halves the <em>first</em>
+dimension. R stores arrays column by column, so the first dimension is
+the contiguous one (in NumPy it is the last), and halving it is the fast
+choice, about 1.8 times faster for a large matrix. To get
+<code>scipy.fft.rfftn()</code>’s layout, list the axes in order:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">512</span> <span class="op">*</span> <span class="fl">512</span><span class="op">)</span>, <span class="fl">512</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="../reference/fft_c2c.html">fft_r2c</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">)</span>            <span class="co"># SciPy's order: halves axis 2</span></span>
-<span><span class="co">#&gt; [1] 512 257</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="../reference/fft_c2c.html">fft_r2c</a></span><span class="op">(</span><span class="va">m</span>, axes <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="co"># halves axis 1, the fast one in R</span></span>
-<span><span class="co">#&gt; [1] 257 512</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="../reference/fft_c2c.html">fft_r2c</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">)</span>                           <span class="co"># halves dimension 1, the fast one</span></span>
+<span><span class="co">#&gt; [1] 257 512</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="../reference/fft_c2c.html">fft_r2c</a></span><span class="op">(</span><span class="va">m</span>, axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="co"># as rfftn(): halves dimension 2</span></span>
+<span><span class="co">#&gt; [1] 512 257</span></span></code></pre></div>
+<p>With <code>axes = NULL</code>, <code>n</code> still lists one length
+per dimension, in dimension order.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
