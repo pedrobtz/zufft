@@ -20,9 +20,10 @@ criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 3. `fft_c2c()`, `fft_r2c()` and `fft_c2r()` work
-over any axes with `n`, all four `norm` values and the condition classes of
-design §9; `zufft_info()` reports the build. DCT/DST, helpers,
+Verified 2026-10-13: Stage 4. `fft_c2c()`, `fft_r2c()`, `fft_c2r()`,
+`fft_dct()` and `fft_dst()` work over any axes with `n`, all four `norm`
+values and the condition classes of design §9; `zufft_info()` reports the
+build. Helpers,
 `fft_stats()`, the thread pool and the C table are later stages. `workers`
 is validated but every transform runs on one thread (placeholder pool).
 Benchmarks against fftwtools are in `bench/RESULTS.md`.
