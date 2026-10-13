@@ -84,7 +84,7 @@ jobs:
             flags: -march=native
             min_width: 4
           - os: windows-latest
-            flags: -march=native
+            flags: -mavx2 -mfma
             min_width: 4
           - os: macos-latest
             flags: -mcpu=native
