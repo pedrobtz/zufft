@@ -65,7 +65,12 @@ test_that("forked children work before and after the pool exists", {
   run <- function() {
     parallel::mclapply(
       1:2,
-      function(i) fft_c2c(m, axes = 1, workers = 2),
+      function(i) {
+        r <- fft_c2c(m, axes = 1, workers = 2)
+        # children leave by _exit(): join their workers first (valgrind)
+        zff_release_threads()
+        r
+      },
       mc.cores = 2
     )
   }

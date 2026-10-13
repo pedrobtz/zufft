@@ -18,6 +18,7 @@
  *   gate and joins every worker.
  * Nothing here calls R. */
 #include <algorithm>
+#include <cstdlib>
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
@@ -117,14 +118,37 @@ class zff_pool : public thread_pool {
 };
 
 /* Process-wide state. The pool is created on first use and replaced in a
- * forked child; the old object is then leaked on purpose. */
+ * forked child; the old object is then kept in `abandoned` (never freed:
+ * its threads do not exist there and its queue lock is held), so that it
+ * stays reachable rather than leaked. */
 std::mutex gate;
 zff_pool *pool = nullptr;
+zff_pool *abandoned[16];
+int n_abandoned = 0;
 thread_local thread_pool *active_pool = nullptr;
 
 zff_pool &the_pool() {
   if (!pool) pool = new zff_pool();
   return *pool;
+}
+
+/* At process exit, join the workers so none outlives the process's own
+ * teardown (and valgrind sees no thread left running). Skipped if another
+ * thread holds the gate, rather than deadlocking the exit. */
+void join_at_exit() {
+  if (!gate.try_lock()) return;
+  if (pool) {
+    pool->shutdown();
+    delete pool;
+    pool = nullptr;
+  }
+  gate.unlock();
+}
+
+std::once_flag exit_once;
+
+void register_exit_hook() {
+  std::call_once(exit_once, [] { std::atexit(join_at_exit); });
 }
 
 #ifdef ZFF_HAVE_ATFORK
@@ -143,7 +167,8 @@ void atfork_parent() {
 /* Only the forking thread exists in the child. It owns the gate and the
  * queue lock; the workers, and anything they held, are gone. */
 void atfork_child() {
-  pool = nullptr; /* leaked: its threads and its locked queue mutex */
+  if (pool && n_abandoned < 16) abandoned[n_abandoned++] = pool;
+  pool = nullptr;
   gate.unlock();
 }
 
@@ -154,6 +179,7 @@ void register_atfork() {
     if (dladdr(reinterpret_cast<void *>(&atfork_prepare), &info) && info.dli_fname)
       dlopen(info.dli_fname, RTLD_NOW | RTLD_NODELETE);
     pthread_atfork(atfork_prepare, atfork_parent, atfork_child);
+    register_exit_hook();
   });
 }
 #endif
@@ -185,7 +211,9 @@ extern "C" int zff_pool_enter(int nthreads) {
   if (nthreads <= 1) return ZFF_OK;
   try {
 #ifdef ZFF_HAVE_ATFORK
-    dt::register_atfork();
+    dt::register_atfork(); /* pins the shared object, then the exit hook */
+#else
+    dt::register_exit_hook(); /* per-DLL on Windows: runs at unload or exit */
 #endif
     dt::the_pool().grow(size_t(nthreads) - 1);
     return ZFF_OK;

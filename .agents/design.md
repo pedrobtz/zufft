@@ -538,9 +538,15 @@ the output, not `NA_real_`. `stats::fft()` behaves the same way
   code. When the handlers are registered (the first threaded call), the
   shared object therefore pins itself in memory with `dlopen(...,
   RTLD_NODELETE)`; after an unload the handlers find no pool and do
-  nothing. The child abandons the inherited pool object, leaking it on
-  purpose, because its threads do not exist and its queue lock was taken
-  by the prepare handler.
+  nothing. The child abandons the inherited pool object, because its
+  threads do not exist and its queue lock was taken by the prepare
+  handler; it keeps the pointer in a static slot so the memory stays
+  reachable. At process exit an `atexit` handler (registered after the
+  pinning) joins the workers, so no thread outlives the process's
+  teardown; valgrind on pedrobtz/zufft#21 flagged both, the abandoned pool
+  as "definitely lost" and running threads as "possibly lost". Forked
+  children leave by `_exit()`, which runs no handler, so the fork test
+  joins their workers through an internal `zff_release_threads()`.
 - A transform is not interruptible. Pool threads never call R.
 
 ## 7. The C table and the `LinkingTo` header
