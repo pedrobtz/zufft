@@ -3,15 +3,16 @@
 
 test_that("the shim's complex transform matches stats::fft()", {
   withr::local_seed(1)
-  for (n in c(1:64, 97, 128, 1000, 1009)) {
-    z <- complex(real = rnorm(n), imaginary = rnorm(n))
-    want <- stats::fft(z)
-    got <- zff_scratch_c2c(z)
-    tol <- 32 * .Machine$double.eps * max(1, log2(n)) * max(1, Mod(want))
-    expect_lte(max(Mod(got - want)), tol, label = paste("n =", n))
-    back <- zff_scratch_c2c(got, inverse = TRUE) / n
-    expect_lte(max(Mod(back - z)), tol, label = paste("round trip, n =", n))
-  }
+  expect_fft_batch({
+    for (n in c(1:64, 97, 128, 1000, 1009)) {
+      z <- complex(real = rnorm(n), imaginary = rnorm(n))
+      want <- stats::fft(z)
+      got <- zff_scratch_c2c(z)
+      expect_fft_equal(got, want, label = paste("n =", n))
+      back <- zff_scratch_c2c(got, inverse = TRUE) / n
+      expect_fft_equal(back, z, N = n, label = paste("round trip, n =", n))
+    }
+  })
 })
 
 test_that("the shim leaves its input unchanged", {
