@@ -7,8 +7,8 @@ the same way and return the same structure as
 `z` are kept, the inverse is not scaled, and inputs of length 0 or 1
 come back unchanged (as complex). The values agree to rounding. The
 differences: every length runs in O(n log n) (R's code is quadratic in a
-large prime factor), real input uses a real transform, long vectors
-work, and threads follow
+large prime factor), real input uses a real transform, and threads
+follow
 [`fft_workers()`](https://pedrobtz.github.io/zufft/reference/fft_workers.md).
 
 ## Usage
