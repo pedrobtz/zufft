@@ -1,0 +1,56 @@
+# Build gates the r-actions check does not fail on, because they are NOTEs:
+# a non-portable compilation flag in src/Makevars (design §12.3) and a
+# compiled-code NOTE (abort, exit or stdio symbols in the shared object).
+# CRAN's pretest rejects both, so here they fail the build.
+on:
+  push:
+    branches: [main, master]
+    paths-ignore: ['**.md', '.agents/**', '_pkgdown.yml', 'docs/**']
+  pull_request:
+    paths-ignore: ['**.md', '.agents/**', '_pkgdown.yml', 'docs/**']
+
+name: build-flags
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  flags:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    name: flags and compiled code (${{ matrix.os }})
+    env:
+      _R_CHECK_FORCE_SUGGESTS_: false
+      _R_CHECK_CRAN_INCOMING_: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+      - name: R CMD check --as-cran
+        run: |
+          R CMD build --no-manual --no-build-vignettes .
+          R CMD check --as-cran --no-manual --ignore-vignettes zufft_*.tar.gz || true
+      - name: no non-portable flags, clean compiled-code check
+        run: ./tools/check-build-log zufft.Rcheck/00check.log
+      - name: exported symbols (design §12.2, informational)
+        run: |
+          so=$(ls zufft.Rcheck/zufft/libs/zufft.*)
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            nm -D --defined-only "$so" | awk '{print $NF}' > exported.txt
+          else
+            nm -gU "$so" | awk '{print $NF}' > exported.txt
+          fi
+          echo "$(wc -l < exported.txt) exported symbols:"
+          head -40 exported.txt

@@ -1,0 +1,15 @@
+# zufft build flags: design §12.3. R CMD check warns about any -f, -m or -O
+# flag in a PKG_*FLAGS variable and NOTEs non-portable flags in the install
+# log; CI fails on either. Fused multiply-add contraction is requested in the
+# source instead (zff_fp_contract.h).
+CXX_STD = CXX17
+
+# -I. finds the vendored ducc0/ tree and the custom threading header;
+# custom threading lets zufft own the thread pool (design §6.5); -pthread
+# where std::thread needs it (WRE §1.2.1 allows it in PKG_CPPFLAGS).
+PKG_CPPFLAGS = -I. -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
+
+# Hidden symbols, the way R's own Makeconf spells them.
+PKG_CXXFLAGS = $(CXX_VISIBILITY)
+PKG_CFLAGS = $(C_VISIBILITY)
+PKG_LIBS = -pthread

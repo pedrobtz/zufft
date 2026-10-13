@@ -25,7 +25,7 @@ portfolio requires. Stage numbers below are the roadmap's, not the design's.
 | Stage | Title | Issue | Pull request | Done |
 | --- | --- | --- | --- | --- |
 | 0 | [Package identity](#stage-0--package-identity) | [#3](https://github.com/pedrobtz/zufft/issues/3) | [#15](https://github.com/pedrobtz/zufft/pull/15) | 2026-10-13 |
-| 1 | [Vendored ducc0 and the build](#stage-1--vendored-ducc0-and-the-build) | [#4](https://github.com/pedrobtz/zufft/issues/4) | | |
+| 1 | [Vendored ducc0 and the build](#stage-1--vendored-ducc0-and-the-build) | [#4](https://github.com/pedrobtz/zufft/issues/4) | [#16](https://github.com/pedrobtz/zufft/pull/16) | 2026-10-13 |
 | 2 | [Portability spikes](#stage-2--portability-spikes) | [#5](https://github.com/pedrobtz/zufft/issues/5) | | |
 | 3 | [Fourier transforms](#stage-3--fourier-transforms) | [#6](https://github.com/pedrobtz/zufft/issues/6) | | |
 | 4 | [Cosine and sine transforms](#stage-4--cosine-and-sine-transforms) | [#7](https://github.com/pedrobtz/zufft/issues/7) | | |
@@ -86,12 +86,14 @@ machine-checked, and `zufft_info()` reports what was built. No transform is
 exposed yet.
 
 **Work.**
-- `tools/vendor-ducc`: fetches ducc0 at the commit SciPy's
+- `tools/vendor/vendor-ducc`: fetches ducc0 at the commit SciPy's
   `tools/vendoring/vendor_duccfft.sh` pins, keeps only the 17 listed files,
   fails if any file lacks the "BSD-3-Clause OR GPL-2.0-or-later" SPDX line
   or is not in the list, checks byte-identity with SciPy's
-  `subprojects/duccfft` at a named SciPy commit, writes `src/ducc0/VERSION`
-  (both commits, per-file SHA-256).
+  `subprojects/duccfft` at a named SciPy commit, writes
+  `tools/vendor/manifest.tsv` (both commits),
+  `tools/vendor/checksums.sha256` (per-file SHA-256) and
+  `src/zff_version.h`; `tools/vendor/verify` checks the tree offline.
 - `src/ducc0/` populated by the script; `src/ducc0_custom_lowlevel_threading.h`
   with the standard-library `Mutex`, `LockGuard`, `UniqueLock`, `CondVar`
   and the `in_parallel_region` workaround; a single-threaded placeholder
@@ -100,12 +102,12 @@ exposed yet.
   `dst`) for `double`, and the `extern "C"` shim skeleton
   (`src/zff_shim.cpp`) with the status enum and thread-local message of §7
   but no transform entry points yet.
-- `src/Makevars` and `src/Makevars.win` exactly as design §12.3 (`CXX_STD =
+- `src/Makevars` and `src/Makevars.win` as design §12.3 (`CXX_STD =
   CXX17`, `PKG_CPPFLAGS` with `-DDUCC0_CUSTOM_LOWLEVEL_THREADING` and
-  `-pthread`, `PKG_CXXFLAGS = $(CXX_VISIBILITY) -fvisibility-inlines-hidden
-  -ffp-contract=fast -fno-math-errno`, `PKG_LIBS = -pthread`); whether
-  `-pthread` is needed or harmful on each leg is recorded in the pull
-  request and §12.3.
+  `-pthread`, `PKG_CXXFLAGS = $(CXX_VISIBILITY)`, `PKG_LIBS = -pthread`),
+  with fused multiply-add contraction requested by a clang pragma in the
+  instantiation units; whether `-pthread` is needed or harmful on each leg
+  is recorded in the pull request and §12.3.
 - `zufft_info()` returning ducc0 commit, SciPy commit, SIMD backend and
   width, FMA contraction, threading mode, pool size, complex path
   (reported as "undecided" until Stage 2).
@@ -121,10 +123,10 @@ exposed yet.
 - `R CMD check --as-cran` passes on all r-actions legs, Windows included,
   with no "non-portable flag(s)" NOTE and no compiler warnings on the GCC
   and clang container legs.
-- `tools/vendor-ducc` run twice in a row leaves `src/ducc0/` unchanged
+- `tools/vendor/vendor-ducc` run twice in a row leaves `src/ducc0/` unchanged
   (`git status` clean); the SPDX gate fails when a file with a GPL-only
   header is placed in `src/ducc0/` (tested in CI with a throwaway file).
-- `zufft_info()` reports the two commits that `src/ducc0/VERSION` holds
+- `zufft_info()` reports the two commits that `tools/vendor/manifest.tsv` holds
   and a SIMD width of 2 on the x86-64 and arm64 legs.
 - The installed shared object exports only `R_init_zufft` on Linux, or the
   pull request records why `$(CXX_VISIBILITY)` alone was accepted (§12.2).
@@ -133,6 +135,27 @@ exposed yet.
 
 **Design.** §8, §12.2, §12.3, §15 D2–D4, D15; open questions 4 and 5
 (track SciPy; report `in_parallel_region` upstream) are acted on here.
+
+**Deviations (2026-10-13).**
+- The vendoring files live under `tools/vendor/` with a manifest, a
+  checksum list and a generated `src/zff_version.h`, instead of
+  `tools/vendor-ducc` and `src/ducc0/VERSION`, to match the defaults of
+  r-actions' `vendor.yml`.
+- R CMD check warns ("checking compilation flags in Makevars") about every
+  `-f` flag in `PKG_CXXFLAGS`, which design §12.3 had missed. Makevars
+  therefore carries no `-ffp-contract=fast`, `-fno-math-errno` or
+  `-fvisibility-inlines-hidden`; contraction comes from GCC's default and
+  a clang pragma. Design §12.3 and D15 are updated.
+- One patch to a vendored file, against design §8's "no patches":
+  ducc0's `MR_fail`/`MR_assert` use the GNU `, ##__VA_ARGS__`, which clang
+  `-pedantic` (CRAN's debian-clang C++ flags) reports as a significant
+  warning. `tools/vendor/patches/0001-error-handling-no-gnu-va-args.patch`
+  replaces it; the vendor tool applies it and `verify` checks it.
+- The `in_parallel_region` report to ducc0 (open question 5) is not filed
+  from this stage: ducc0's tracker is on the Max-Planck GitLab and filing
+  is an outward-facing action left to the maintainer. The workaround is in
+  `src/ducc0_custom_lowlevel_threading.h`, and the pull request body
+  carries the text of the report.
 
 ## Stage 2 — Portability spikes
 

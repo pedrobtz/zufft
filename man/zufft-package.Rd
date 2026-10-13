@@ -25,5 +25,15 @@ Authors:
   \item Pedro Baltazar \email{pedrobtz@gmail.com} [copyright holder]
 }
 
+Other contributors:
+\itemize{
+  \item Martin Reinecke (ducc0, bundled in src/ducc0) [contributor]
+  \item Peter Bell (ducc0, bundled in src/ducc0) [contributor, copyright holder]
+  \item Max-Planck-Society (ducc0, bundled in src/ducc0) [copyright holder]
+  \item Matteo Frigo (odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h) [copyright holder]
+  \item Massachusetts Institute of Technology (odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h) [copyright holder]
+  \item The TensorFlow Authors (helpers in src/ducc0/infra/threading.cc) [copyright holder]
+}
+
 }
 \keyword{internal}

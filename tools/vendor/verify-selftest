@@ -1,0 +1,27 @@
+#!/bin/sh
+# Shows that tools/vendor/verify rejects what it must: a file in src/ducc0
+# that is not in the manifest (for example a GPL-only ducc0 file), and an
+# edit to a vendored file. Restores the tree afterwards. Run by CI.
+set -eu
+cd "$(dirname "$0")/../.."
+
+probe=src/ducc0/math/gpl_only_probe.h
+victim=src/ducc0/math/cmplx.h
+cp "$victim" "/tmp/zufft-selftest.$$"
+restore() { rm -f "$probe"; cp "/tmp/zufft-selftest.$$" "$victim"; rm -f "/tmp/zufft-selftest.$$"; }
+trap restore EXIT
+
+printf '/* SPDX-License-Identifier: GPL-2.0-or-later */\n' > "$probe"
+if tools/vendor/verify >/dev/null; then
+  echo "FAIL verify accepted a file that is not in the manifest"; exit 1
+fi
+rm -f "$probe"
+
+printf '\n' >> "$victim"
+if tools/vendor/verify >/dev/null; then
+  echo "FAIL verify accepted an edited vendored file"; exit 1
+fi
+restore; trap - EXIT
+
+tools/vendor/verify >/dev/null
+echo "ok  verify rejects unlisted and edited files, and accepts the tree"

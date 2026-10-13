@@ -1,0 +1,30 @@
+Drop the GNU ", ##__VA_ARGS__" token pasting from MR_fail and MR_assert.
+
+clang -pedantic, which CRAN's r-devel-linux-x86_64-debian-clang flavor
+uses for C++, reports it as -Wgnu-zero-variadic-macro-arguments, and
+R CMD check counts that as a significant warning. Every call site in the
+vendored subset passes at least one argument after the format string, so
+plain __VA_ARGS__ expands identically. Found in Stage 1 (pedrobtz/zufft#16,
+the clang23 leg). Silencing it with a pragma would draw R's own NOTE about
+diagnostic-suppressing pragmas.
+
+--- a/infra/error_handling.h	2026-10-13 03:10:51
++++ b/infra/error_handling.h	2026-10-13 03:10:51
+@@ -104,7 +104,7 @@
+ /// passed arguments.
+ #define MR_fail(...) \
+   do { \
+-    ::ducc0::detail_error_handling::fail__(DUCC0_ERROR_HANDLING_LOC_, "\n", ##__VA_ARGS__, "\n"); \
++    ::ducc0::detail_error_handling::fail__(DUCC0_ERROR_HANDLING_LOC_, "\n", __VA_ARGS__, "\n"); \
+     } while(0)
+ 
+ /// If \a cond is false, throws a std::runtime_error containing the code
+@@ -112,7 +112,7 @@
+ #define MR_assert(cond,...) \
+   do { \
+     if (cond); \
+-    else { MR_fail("Assertion failure\n", ##__VA_ARGS__); } \
++    else { MR_fail("Assertion failure\n", __VA_ARGS__); } \
+     } while(0)
+ 
+ }}

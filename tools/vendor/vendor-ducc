@@ -1,0 +1,106 @@
+#!/bin/sh
+# Vendor the BSD-licensed FFT subset of ducc0 into src/ducc0/.
+#
+# Usage: tools/vendor/vendor-ducc [SCIPY_COMMIT]
+#
+# Takes ducc0 at the commit SciPy's tools/vendoring/vendor_duccfft.sh pins at
+# SCIPY_COMMIT (default: the one recorded in tools/vendor/manifest.tsv),
+# keeps exactly the files listed in FILES below, and fails unless every one
+# carries the dual "BSD-3-Clause OR GPL-2.0-or-later" SPDX line and is byte
+# identical to SciPy's subprojects/duccfft copy at that commit. It then
+# applies tools/vendor/patches/*.patch in order (each explains itself) and
+# rewrites src/ducc0/, tools/vendor/manifest.tsv,
+# tools/vendor/checksums.sha256 and src/zff_version.h. Design §8.
+#
+# The full ducc0 repository is GPL-2.0-or-later. Nothing outside FILES may
+# ever be copied into this package.
+set -eu
+
+cd "$(dirname "$0")/../.."
+MANIFEST=tools/vendor/manifest.tsv
+SUMS=tools/vendor/checksums.sha256
+DEST=src/ducc0
+
+FILES="fft/fft.h fft/fft1d_impl.h fft/fftnd_impl.h fft/fft_inst_inc.h
+infra/aligned_array.h infra/error_handling.h infra/mav.h infra/mav.cc
+infra/misc_utils.h infra/simd.h infra/string_utils.h infra/string_utils.cc
+infra/threading.h infra/threading.cc infra/useful_macros.h math/cmplx.h
+math/unity_roots.h"
+SPDX="SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0-or-later"
+
+scipy_commit=${1:-$(awk -F'\t' '$1 == "scipy_commit" { print $2 }' "$MANIFEST")}
+[ -n "$scipy_commit" ] || { echo "no SciPy commit given or recorded" >&2; exit 1; }
+
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+  else shasum -a 256 "$1" | cut -d' ' -f1; fi
+}
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+raw=https://raw.githubusercontent.com/scipy/scipy/$scipy_commit
+
+curl -fsSL "$raw/tools/vendoring/vendor_duccfft.sh" -o "$tmp/vendor_duccfft.sh"
+ducc_commit=$(sed -n 's/^COMMIT_HASH="\([0-9a-f]*\)"$/\1/p' "$tmp/vendor_duccfft.sh")
+[ -n "$ducc_commit" ] || { echo "cannot read COMMIT_HASH from SciPy" >&2; exit 1; }
+echo "SciPy $scipy_commit pins ducc0 $ducc_commit"
+
+# GitHub mirror of https://gitlab.mpcdf.mpg.de/mtr/ducc (same commits).
+mkdir "$tmp/ducc"
+curl -fsSL "https://codeload.github.com/mreineck/ducc/tar.gz/$ducc_commit" |
+  tar xzf - -C "$tmp/ducc" --strip-components=1
+
+# Same filter as SciPy's script: only files with the dual SPDX line.
+(cd "$tmp/ducc" && grep -rl "$SPDX" src/ducc0 | sed 's|^src/ducc0/||' | sort) \
+  > "$tmp/dual"
+
+mkdir "$tmp/new"
+for f in $FILES; do
+  grep -qxF "$f" "$tmp/dual" || { echo "FAIL $f lacks the dual SPDX line" >&2; exit 1; }
+  mkdir -p "$tmp/new/$(dirname "$f")"
+  cp "$tmp/ducc/src/ducc0/$f" "$tmp/new/$f"
+  curl -fsSL "$raw/subprojects/duccfft/ducc0/$f" -o "$tmp/scipy_copy"
+  cmp -s "$tmp/new/$f" "$tmp/scipy_copy" ||
+    { echo "FAIL $f differs from SciPy's copy" >&2; exit 1; }
+done
+# SciPy's BSD-3 licence text for the subset.
+curl -fsSL "$raw/subprojects/duccfft/LICENSE.md" -o "$tmp/new/LICENSE.md"
+
+# zufft's patches, applied after the comparison with SciPy.
+patches=""
+for p in tools/vendor/patches/*.patch; do
+  [ -e "$p" ] || continue
+  patch -s -p1 -d "$tmp/new" < "$p"
+  patches="$patches $(basename "$p")"
+  echo "applied $(basename "$p")"
+done
+
+rm -rf "$DEST"
+mkdir -p "$DEST"
+cp -R "$tmp/new/." "$DEST/"
+
+{
+  printf 'key\tvalue\n'
+  printf 'scipy_commit\t%s\n' "$scipy_commit"
+  printf 'ducc0_commit\t%s\n' "$ducc_commit"
+  printf 'ducc0_upstream\t%s\n' "https://gitlab.mpcdf.mpg.de/mtr/ducc"
+  printf 'licence\t%s\n' "BSD-3-Clause (elected from BSD-3-Clause OR GPL-2.0-or-later)"
+  for p in $patches; do
+    printf 'patch\t%s\t%s\n' "$p" "$(sha256 "tools/vendor/patches/$p")"
+  done
+} > "$MANIFEST"
+
+cat > src/zff_version.h <<EOH
+/* Written by tools/vendor/vendor-ducc; do not edit. */
+#ifndef ZFF_VERSION_H
+#define ZFF_VERSION_H
+#define ZFF_SCIPY_COMMIT "$scipy_commit"
+#define ZFF_DUCC0_COMMIT "$ducc_commit"
+#endif
+EOH
+
+: > "$SUMS"
+for f in LICENSE.md $FILES; do
+  printf '%s  %s\n' "$(sha256 "$DEST/$f")" "$DEST/$f" >> "$SUMS"
+done
+echo "vendored $(echo $FILES | wc -w | tr -d ' ') files into $DEST"

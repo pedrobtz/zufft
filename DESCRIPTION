@@ -1,8 +1,21 @@
 Package: zufft
 Title: Fast Fourier, Cosine and Sine Transforms with a Bundled 'ducc0'
 Version: 0.0.0.9000
-Authors@R: 
-    person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph"))
+Authors@R: c(
+    person("Pedro", "Baltazar", , "pedrobtz@gmail.com", role = c("aut", "cre", "cph")),
+    person("Martin", "Reinecke", role = "ctb",
+           comment = "ducc0, bundled in src/ducc0"),
+    person("Peter", "Bell", role = c("ctb", "cph"),
+           comment = "ducc0, bundled in src/ducc0"),
+    person("Max-Planck-Society", role = "cph",
+           comment = "ducc0, bundled in src/ducc0"),
+    person("Matteo", "Frigo", role = "cph",
+           comment = "odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h"),
+    person("Massachusetts Institute of Technology", role = "cph",
+           comment = "odd-sized DCT-IV in src/ducc0/fft/fft1d_impl.h"),
+    person("The TensorFlow Authors", role = "cph",
+           comment = "helpers in src/ducc0/infra/threading.cc")
+  )
 Description: Computes discrete Fourier transforms (complex,
     real-to-complex and complex-to-real) and discrete cosine and sine
     transforms of types one to four over any axes of an array, with the
@@ -19,8 +32,10 @@ Depends:
     R (>= 4.1)
 Suggests: 
     testthat (>= 3.0.0)
+Config/roxygen2/version: 8.1.0
 Config/testthat/edition: 3
+Copyright: See inst/COPYRIGHTS.
 Encoding: UTF-8
 Language: en-GB
 Roxygen: list(markdown = TRUE)
-Config/roxygen2/version: 8.1.0
+SystemRequirements: C++17

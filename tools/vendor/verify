@@ -1,0 +1,60 @@
+#!/bin/sh
+# Offline check of src/ducc0/ against tools/vendor/: exactly the recorded
+# files, each with its recorded SHA-256, src/zff_version.h naming the
+# recorded commits, every source file carrying the dual
+# "BSD-3-Clause OR GPL-2.0-or-later" SPDX line, and nothing else in the tree.
+# Run by CI on every pull request (pedrobtz/r-actions vendor.yml). Design §8.
+set -eu
+
+cd "$(dirname "$0")/../.."
+SUMS=tools/vendor/checksums.sha256
+SPDX="SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0-or-later"
+fail=0
+
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+  else shasum -a 256 "$1" | cut -d' ' -f1; fi
+}
+
+while read -r want path; do
+  [ -n "$path" ] || continue
+  if [ ! -f "$path" ]; then echo "FAIL missing $path"; fail=1; continue; fi
+  got=$(sha256 "$path")
+  [ "$got" = "$want" ] || { echo "FAIL checksum $path"; fail=1; }
+  case "$path" in
+    */LICENSE.md) ;;
+    *) grep -qF "$SPDX" "$path" || { echo "FAIL no dual SPDX line: $path"; fail=1; } ;;
+  esac
+done < "$SUMS"
+
+find src/ducc0 -type f | sort > /tmp/zufft-vendor-tree.$$
+awk '{ print $2 }' "$SUMS" | sort > /tmp/zufft-vendor-list.$$
+extra=$(comm -23 /tmp/zufft-vendor-tree.$$ /tmp/zufft-vendor-list.$$)
+rm -f /tmp/zufft-vendor-tree.$$ /tmp/zufft-vendor-list.$$
+if [ -n "$extra" ]; then
+  echo "FAIL files in src/ducc0 that are not in $SUMS:"
+  printf '  %s\n' $extra
+  fail=1
+fi
+
+for key in scipy_commit ducc0_commit; do
+  want=$(awk -F'\t' -v k="$key" '$1 == k { print $2 }' tools/vendor/manifest.tsv)
+  macro=$(echo "ZFF_$key" | tr '[:lower:]' '[:upper:]')
+  grep -qx "#define $macro \"$want\"" src/zff_version.h ||
+    { echo "FAIL src/zff_version.h does not record $key $want"; fail=1; }
+done
+
+# Every patch on disk is recorded in the manifest with its checksum, and
+# every recorded patch is on disk, so the tree is "upstream plus exactly
+# these patches".
+for p in tools/vendor/patches/*.patch; do
+  [ -e "$p" ] || continue
+  want=$(awk -F'\t' -v n="$(basename "$p")" '$1 == "patch" && $2 == n { print $3 }' tools/vendor/manifest.tsv)
+  [ "$want" = "$(sha256 "$p")" ] || { echo "FAIL patch not recorded or changed: $p"; fail=1; }
+done
+for n in $(awk -F'\t' '$1 == "patch" { print $2 }' tools/vendor/manifest.tsv); do
+  [ -f "tools/vendor/patches/$n" ] || { echo "FAIL recorded patch missing: $n"; fail=1; }
+done
+
+[ "$fail" -eq 0 ] && echo "ok  src/ducc0 matches $SUMS ($(wc -l < "$SUMS" | tr -d ' ') files)"
+exit "$fail"
