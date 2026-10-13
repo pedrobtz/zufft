@@ -11,7 +11,7 @@
 
 ## Overview
 
-zufft provides fast Fourier transforms (FFTs) for R, along with discrete
+zufft provides fast Fourier transforms (FFTs), along with discrete
 cosine and sine transforms (DCTs and DSTs). It’s designed to replace
 fftwtools, without the need for FFTW:
 
