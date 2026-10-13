@@ -1,0 +1,5 @@
+key	value
+scipy_commit	ecee36d388004b86bdf56bf3fd7498006cddda96
+ducc0_commit	64f42ba531f609ba7029c82207a063b17f9d5275
+ducc0_upstream	https://gitlab.mpcdf.mpg.de/mtr/ducc
+licence	BSD-3-Clause (elected from BSD-3-Clause OR GPL-2.0-or-later)
