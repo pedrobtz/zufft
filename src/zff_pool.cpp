@@ -123,8 +123,6 @@ class zff_pool : public thread_pool {
  * stays reachable rather than leaked. */
 std::mutex gate;
 zff_pool *pool = nullptr;
-zff_pool *abandoned[16];
-int n_abandoned = 0;
 thread_local thread_pool *active_pool = nullptr;
 
 zff_pool &the_pool() {
@@ -133,6 +131,9 @@ zff_pool &the_pool() {
 }
 
 #ifdef ZFF_HAVE_ATFORK
+zff_pool *abandoned[16];
+int n_abandoned = 0;
+
 /* At process exit (POSIX only, see zff_pool_enter), join the workers so
  * none outlives the process's own teardown (and valgrind sees no thread
  * left running). Skipped if another
