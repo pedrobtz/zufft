@@ -44,5 +44,17 @@ for key in scipy_commit ducc0_commit; do
     { echo "FAIL src/zff_version.h does not record $key $want"; fail=1; }
 done
 
+# Every patch on disk is recorded in the manifest with its checksum, and
+# every recorded patch is on disk, so the tree is "upstream plus exactly
+# these patches".
+for p in tools/vendor/patches/*.patch; do
+  [ -e "$p" ] || continue
+  want=$(awk -F'\t' -v n="$(basename "$p")" '$1 == "patch" && $2 == n { print $3 }' tools/vendor/manifest.tsv)
+  [ "$want" = "$(sha256 "$p")" ] || { echo "FAIL patch not recorded or changed: $p"; fail=1; }
+done
+for n in $(awk -F'\t' '$1 == "patch" { print $2 }' tools/vendor/manifest.tsv); do
+  [ -f "tools/vendor/patches/$n" ] || { echo "FAIL recorded patch missing: $n"; fail=1; }
+done
+
 [ "$fail" -eq 0 ] && echo "ok  src/ducc0 matches $SUMS ($(wc -l < "$SUMS" | tr -d ' ') files)"
 exit "$fail"

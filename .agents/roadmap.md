@@ -146,6 +146,11 @@ exposed yet.
   therefore carries no `-ffp-contract=fast`, `-fno-math-errno` or
   `-fvisibility-inlines-hidden`; contraction comes from GCC's default and
   a clang pragma. Design §12.3 and D15 are updated.
+- One patch to a vendored file, against design §8's "no patches":
+  ducc0's `MR_fail`/`MR_assert` use the GNU `, ##__VA_ARGS__`, which clang
+  `-pedantic` (CRAN's debian-clang C++ flags) reports as a significant
+  warning. `tools/vendor/patches/0001-error-handling-no-gnu-va-args.patch`
+  replaces it; the vendor tool applies it and `verify` checks it.
 - The `in_parallel_region` report to ducc0 (open question 5) is not filed
   from this stage: ducc0's tracker is on the Max-Planck GitLab and filing
   is an outward-facing action left to the maintainer. The workaround is in

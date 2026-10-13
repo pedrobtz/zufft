@@ -699,7 +699,16 @@ prove it, and a licence trail CRAN can read.
   in the bundled files. Code ported from SciPy's `pyduccfft.cxx` (Stage 5)
   adds its holder when it lands. The package `License` stays `MIT + file
   LICENSE`.
-- **Patches.** None to upstream files. zufft supplies
+- **Patches.** One, in `tools/vendor/patches/`, applied by the vendor
+  tool after the comparison with SciPy and recorded with its checksum in
+  the manifest: `0001-error-handling-no-gnu-va-args.patch` replaces the GNU
+  `, ##__VA_ARGS__` in `MR_fail` and `MR_assert` with plain `__VA_ARGS__`.
+  clang `-pedantic`, which CRAN's debian-clang flavor uses for C++, reports
+  the GNU form as a significant warning, so R CMD check gives a WARNING
+  (found by the clang23 leg in Stage 1); every call site passes at least
+  one argument, so the expansion is unchanged, and a pragma would draw R's
+  NOTE about diagnostic-suppressing pragmas. A re-vendor must re-apply it
+  or show it is no longer needed. Besides the patch, zufft supplies
   `src/ducc0_custom_lowlevel_threading.h` (`Mutex`, `LockGuard`,
   `UniqueLock`, `CondVar` as the standard library's) and its pool
   (`set_active_pool()`, `get_active_pool()`, and

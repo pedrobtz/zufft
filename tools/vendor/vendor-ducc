@@ -8,7 +8,8 @@
 # keeps exactly the files listed in FILES below, and fails unless every one
 # carries the dual "BSD-3-Clause OR GPL-2.0-or-later" SPDX line and is byte
 # identical to SciPy's subprojects/duccfft copy at that commit. It then
-# rewrites src/ducc0/, tools/vendor/manifest.tsv and
+# applies tools/vendor/patches/*.patch in order (each explains itself) and
+# rewrites src/ducc0/, tools/vendor/manifest.tsv,
 # tools/vendor/checksums.sha256 and src/zff_version.h. Design §8.
 #
 # The full ducc0 repository is GPL-2.0-or-later. Nothing outside FILES may
@@ -65,6 +66,15 @@ done
 # SciPy's BSD-3 licence text for the subset.
 curl -fsSL "$raw/subprojects/duccfft/LICENSE.md" -o "$tmp/new/LICENSE.md"
 
+# zufft's patches, applied after the comparison with SciPy.
+patches=""
+for p in tools/vendor/patches/*.patch; do
+  [ -e "$p" ] || continue
+  patch -s -p1 -d "$tmp/new" < "$p"
+  patches="$patches $(basename "$p")"
+  echo "applied $(basename "$p")"
+done
+
 rm -rf "$DEST"
 mkdir -p "$DEST"
 cp -R "$tmp/new/." "$DEST/"
@@ -75,6 +85,9 @@ cp -R "$tmp/new/." "$DEST/"
   printf 'ducc0_commit\t%s\n' "$ducc_commit"
   printf 'ducc0_upstream\t%s\n' "https://gitlab.mpcdf.mpg.de/mtr/ducc"
   printf 'licence\t%s\n' "BSD-3-Clause (elected from BSD-3-Clause OR GPL-2.0-or-later)"
+  for p in $patches; do
+    printf 'patch\t%s\t%s\n' "$p" "$(sha256 "tools/vendor/patches/$p")"
+  done
 } > "$MANIFEST"
 
 cat > src/zff_version.h <<EOH

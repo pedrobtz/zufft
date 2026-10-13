@@ -3,3 +3,4 @@ scipy_commit	ecee36d388004b86bdf56bf3fd7498006cddda96
 ducc0_commit	64f42ba531f609ba7029c82207a063b17f9d5275
 ducc0_upstream	https://gitlab.mpcdf.mpg.de/mtr/ducc
 licence	BSD-3-Clause (elected from BSD-3-Clause OR GPL-2.0-or-later)
+patch	0001-error-handling-no-gnu-va-args.patch	809e73e467b8ab59b6b57236061836d5ef90b8378b098fdcb8292c87d9fd912f
