@@ -108,6 +108,9 @@ the zufft inverse with `norm = "none"`, because fftwtools, like
 [`stats::fft()`](https://rdrr.io/r/stats/fft.html) for R's own complex
 transform.
 
+Other transforms:
+[`fft_dct()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md)
+
 ## Examples
 
 ``` r

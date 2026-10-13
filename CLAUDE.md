@@ -24,17 +24,19 @@ is the stage plan with exit criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 3.
+Verified 2026-10-13: Stage 4.
 [`fft_c2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md),
-[`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md) and
-[`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
+[`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md),
+[`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md),
+[`fft_dct()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md) and
+[`fft_dst()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md)
 work over any axes with `n`, all four `norm` values and the condition
 classes of design §9;
 [`zufft_info()`](https://pedrobtz.github.io/zufft/reference/zufft_info.md)
-reports the build. DCT/DST, helpers, `fft_stats()`, the thread pool and
-the C table are later stages. `workers` is validated but every transform
-runs on one thread (placeholder pool). Benchmarks against fftwtools are
-in `bench/RESULTS.md`.
+reports the build. Helpers, `fft_stats()`, the thread pool and the C
+table are later stages. `workers` is validated but every transform runs
+on one thread (placeholder pool). Benchmarks against fftwtools are in
+`bench/RESULTS.md`.
 
 ## Stage tracking
 
@@ -169,10 +171,10 @@ never copy anything else in.
   only when SciPy does (design §8).
 - `tools/vendor/verify` is the offline check CI runs; never edit a file
   in `src/ducc0/`. Changes to vendored files go in
-  `tools/vendor/patches/`, each with its reason; there is one, for clang
-  `-pedantic` (CRAN’s debian-clang flavor). zufft’s adaptations live
-  beside it: the custom threading header, the `.cc` wrappers and the
-  instantiation units.
+  `tools/vendor/patches/`, each with its reason; there are two, for
+  clang `-pedantic` (CRAN’s debian-clang flavor) and for a UBSan finding
+  in the DCT/DST plans. zufft’s adaptations live beside it: the custom
+  threading header, the `.cc` wrappers and the instantiation units.
 - **No `-f`, `-m` or `-O` flag in `Makevars`.** R CMD check warns about
   them (“checking compilation flags in Makevars”). Fused multiply-add
   contraction comes from `src/zff_fp_contract.h`, included first in each
