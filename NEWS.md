@@ -7,6 +7,12 @@ First release.
   with SciPy's crop-or-pad `n` and `norm = "backward"`, `"ortho"`,
   `"forward"` or `"none"` (the unnormalised convention of fftwtools and
   `stats::fft()`).
+* With `axes = NULL`, `fft_r2c()` and `fft_c2r()` halve the first dimension,
+  the contiguous one in R, as fftwtools' 2-D and 3-D real transforms do; give
+  `axes` explicitly to halve the last axis listed, as SciPy does.
+* Results are bit-identical whatever the number of threads:
+  `zufft_info()$fp_contract` is `"off"` for every build that cannot fuse
+  multiply-adds, which includes all of CRAN's.
 * `fft_dct()` and `fft_dst()` compute discrete cosine and sine transforms of
   types 1 to 4 and their inverses over any axes, with SciPy's definitions,
   `norm` and `orthogonalize`.

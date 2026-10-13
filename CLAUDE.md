@@ -24,8 +24,9 @@ Verified 2026-10-13: version 0.1.0, ready for CRAN submission. Every stage
 of the roadmap is merged; `cran-comments.md` lists the CI legs. What
 remains is the submission itself, tracked in
 [CRAN-submission (#14)](https://github.com/pedrobtz/zufft/issues/14).
-Open design questions 9 (default axis order of the real transforms) and 10
-(contraction or thread-count independence) are the maintainer's to decide.
+Design questions 9 and 10 are decided: the real transforms halve the first
+dimension by default, and fused multiply-add contraction is off so results
+do not depend on `workers`.
 Benchmarks against fftwtools are in `bench/RESULTS.md`.
 
 ## Stage tracking
@@ -166,7 +167,7 @@ in.
   header, the `.cc` wrappers and the instantiation units.
 - **No `-f`, `-m` or `-O` flag in `Makevars`.** R CMD check warns about them
   ("checking compilation flags in Makevars"). Fused multiply-add contraction
-  comes from `src/zff_fp_contract.h`, included first in each instantiation
+  is switched off by `src/zff_fp_contract.h`, included first in each instantiation
   unit. `tools/check-build-log` fails CI on non-portable flags and on any
   compiled-code NOTE (abort, exit, stdio).
 - Every holder named in the bundled files is in `Authors@R` and

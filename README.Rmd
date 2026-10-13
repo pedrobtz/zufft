@@ -95,9 +95,11 @@ zufft caches its plans, where fftwtools plans every call, and transforms of
 any length run in O(n log n): a prime length of 100 003 takes 6.39 ms here
 against 4.17 s for `stats::fft()`.
 
-R stores arrays column by column, so the first axis is the contiguous one.
-The real transforms halve the last axis listed, as SciPy does; for speed,
-list the first axis last, as in `fft_r2c(m, axes = 2:1)`.
+R stores arrays column by column, so the first dimension is the contiguous
+one. With `axes = NULL` the real transforms halve that dimension, which is
+fast and matches fftwtools; give `axes` explicitly to halve the last one
+listed, as SciPy does. Results are bit-identical whatever the number of
+threads.
 
 **A native build** is the user's choice: CRAN's binaries use the portable
 SSE2 (x86-64) or NEON (arm64) vector width. To compile for your own CPU, add

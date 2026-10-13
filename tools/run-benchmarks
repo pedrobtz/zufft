@@ -100,7 +100,8 @@ for (s in if (quick) 512 else c(512, 2048)) {
       function(d, w) fft_c2c(d, workers = w),
       function(d) fftwtools::fftw_c2c_2d(d),
       function(d) stats::fft(d))
-  # fftwtools halves R's first axis (FFTW is row-major): axes = 2:1.
+  # fftwtools halves R's first axis (FFTW is row-major), as zufft's
+  # default does; axes = 2:1 makes it explicit.
   add(paste("2-D real", nm), mr,
       function(d, w) fft_r2c(d, axes = 2:1, workers = w),
       function(d) fftwtools::fftw_r2c_2d(d, HermConj = 0),
