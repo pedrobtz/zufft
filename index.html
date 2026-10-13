@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Fast Fourier, Cosine and Sine Transforms with a Bundled ducc0">
-<meta name="description" content="Computes discrete Fourier transforms (complex, real-to-complex and complex-to-real) and discrete cosine and sine transforms of types one to four over any axes of an array, with the FFT code of ducc0 (&lt;https://github.com/mreineck/ducc&gt;) bundled in the BSD-licensed subset that SciPy uses, so that no system FFTW library is needed. Transforms of any length run in O(n log n) time, real input uses true real transforms, and several threads can share one transform. The interface follows the conventions of scipy.fft and offers the unnormalised inverse of fftwtools and stats::fft().">
-<meta property="og:description" content="Computes discrete Fourier transforms (complex, real-to-complex and complex-to-real) and discrete cosine and sine transforms of types one to four over any axes of an array, with the FFT code of ducc0 (&lt;https://github.com/mreineck/ducc&gt;) bundled in the BSD-licensed subset that SciPy uses, so that no system FFTW library is needed. Transforms of any length run in O(n log n) time, real input uses true real transforms, and several threads can share one transform. The interface follows the conventions of scipy.fft and offers the unnormalised inverse of fftwtools and stats::fft().">
+<meta name="description" content="Computes discrete Fourier transforms (complex, real-to-complex and complex-to-real) and discrete cosine and sine transforms of types one to four over any axes of an array, with the fast Fourier transform (FFT) code of ducc0 (&lt;https://github.com/mreineck/ducc&gt;) bundled in the BSD-licensed subset that SciPy uses, so that no system FFTW library is needed. Transforms of any length run in O(n log n) time, real input uses true real transforms, and several threads can share one transform. The interface follows the conventions of scipy.fft and offers the unnormalised inverse of fftwtools and stats::fft().">
+<meta property="og:description" content="Computes discrete Fourier transforms (complex, real-to-complex and complex-to-real) and discrete cosine and sine transforms of types one to four over any axes of an array, with the fast Fourier transform (FFT) code of ducc0 (&lt;https://github.com/mreineck/ducc&gt;) bundled in the BSD-licensed subset that SciPy uses, so that no system FFTW library is needed. Transforms of any length run in O(n log n) time, real input uses true real transforms, and several threads can share one transform. The interface follows the conventions of scipy.fft and offers the unnormalised inverse of fftwtools and stats::fft().">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">zufft</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -70,15 +70,18 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version of zufft from <a href="https://github.com/pedrobtz/zufft" class="external-link">GitHub</a> with:</p>
+<p>Install zufft from CRAN with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"zufft"</span><span class="op">)</span></span></code></pre></div>
+<p>or the development version from <a href="https://github.com/pedrobtz/zufft" class="external-link">GitHub</a> with:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pedrobtz/zufft"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedrobtz/zufft" class="external-link">zufft</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">2</span>, <span class="fl">8</span>, <span class="fl">5</span>, <span class="fl">7</span><span class="op">)</span></span>

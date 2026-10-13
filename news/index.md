@@ -1,6 +1,8 @@
 # Changelog
 
-## zufft 0.0.0.9000
+## zufft 0.1.0
+
+First release.
 
 - [`fft_c2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md),
   [`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
