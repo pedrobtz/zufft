@@ -20,10 +20,12 @@ criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 9. Everything in design §5.1 and §7 exists and is
-documented: reference pages, the fftwtools migration vignette, the
-scipy.fft article (`vignettes/articles/`, pkgdown only) and the README.
-Stage 10 is the release readiness pass.
+Verified 2026-10-13: version 0.1.0, ready for CRAN submission. Every stage
+of the roadmap is merged; `cran-comments.md` lists the CI legs. What
+remains is the submission itself, tracked in
+[CRAN-submission (#14)](https://github.com/pedrobtz/zufft/issues/14).
+Open design questions 9 (default axis order of the real transforms) and 10
+(contraction or thread-count independence) are the maintainer's to decide.
 Benchmarks against fftwtools are in `bench/RESULTS.md`.
 
 ## Stage tracking
