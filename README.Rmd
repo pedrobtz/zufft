@@ -164,20 +164,19 @@ precision only. You'll find those numbers in
 
 ## Native build
 
-CRAN's binaries are compiled to run on any CPU of their architecture. On
-x86-64, that means SSE2, whose SIMD registers hold two doubles. If your CPU
-has AVX2 or AVX-512, a build for your own machine runs faster. It takes two
-steps in R:
+A native build is only worth it on Linux x86-64. CRAN's binaries are
+compiled to run on any CPU of their architecture, and on x86-64 that means
+SSE2, whose SIMD registers hold two doubles. If your CPU has AVX2 or
+AVX-512, a build for your own machine runs faster. It takes two steps in R:
 
 1. Set the environment variable `ZUFFT_CXXFLAGS` with `Sys.setenv()`.
    zufft adds it to its compiler flags, and no other package sees it.
 
 2. Install from source with `install.packages("zufft", type = "source")`. A
-   prebuilt binary, which is what you get by default on macOS, is already
-   compiled and ignores the variable.
+   prebuilt binary is already compiled and ignores the variable.
 
 ```{r, eval = FALSE}
-Sys.setenv(ZUFFT_CXXFLAGS = "-march=native") # "-mcpu=native" on Apple silicon
+Sys.setenv(ZUFFT_CXXFLAGS = "-march=native")
 install.packages("zufft", type = "source")
 ```
 
@@ -196,16 +195,18 @@ is 4 with AVX2, 8 with AVX-512, and 2 for a portable build:
 zufft::zufft_info()$simd_width
 ```
 
-This works on Linux and macOS. Installing from source needs a compiler (on
-macOS, the Xcode command line tools). Windows builds ignore
-`ZUFFT_CXXFLAGS` and stay portable, because code built for AVX by the GCC in
-Rtools crashed in our tests.
-
 How much does it help? On the Linux x86-64 runner of `bench/RESULTS.md`,
 where this gives AVX2, the 16384 × 64 complex column case drops from
 15.39 ms to 9.17 ms. A complex transform of prime length 10 007 drops from
-659.6 µs to 389.5 µs. On Apple silicon the SIMD width stays at two
-doubles (NEON), so a native build (`-mcpu=native` there) gains little.
+659.6 µs to 389.5 µs.
+
+Other platforms don't benefit:
+
+* On Apple silicon the SIMD width stays at two doubles (NEON), so a native
+  build gains little.
+
+* Windows builds ignore `ZUFFT_CXXFLAGS` and stay portable, because code
+  built for AVX by the GCC in Rtools crashed in our tests.
 
 There are two things to keep in mind:
 
@@ -213,8 +214,8 @@ There are two things to keep in mind:
   installed library to other machines.
 
 * With GCC on a CPU with fused multiply-add (FMA), results can differ in
-  the last bit between thread counts. `zufft::zufft_info()$fp_contract` reports
-  `"fast"` when that applies. CRAN's builds report `"off"`.
+  the last bit between thread counts. `zufft::zufft_info()$fp_contract`
+  reports `"fast"` when that applies. CRAN's builds report `"off"`.
 
 ## Licence
 
