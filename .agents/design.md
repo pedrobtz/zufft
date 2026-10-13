@@ -829,9 +829,14 @@ arm64 laptop with Homebrew's FFTW 3 for fftwtools 0.9-11 (full table in
 `bench/RESULTS.md`), zufft is faster than fftwtools on 32 of the 33 grid
 points; the exception is the complex prime 1 000 003 at 1.02×. The
 smallest ratios are the multi-dimensional complex cases (0.19 for 128³,
-0.22 for 512²), where fftwtools' plan-per-call costs most. The Linux
-x86-64 numbers come from the `benchmarks` workflow on a GitHub runner and
-are recorded in `bench/RESULTS.md` beside these. Per-call R overhead is
+0.22 for 512²), where fftwtools' plan-per-call costs most. On a GitHub
+`ubuntu-latest` x86-64 runner (Ubuntu's FFTW, `benchmarks` workflow on
+pedrobtz/zufft#18) zufft is faster on 27 of 33 points; the slower ones are
+single 1-D complex transforms: 65 536 (1.44×), 100 000 (1.19×), 1 000 000
+(1.02×) and the primes 100 003 (1.11×) and 1 000 003 (1.23×). That is the
+gap this section predicted: CRAN-portable zufft is SSE2 on x86-64 while
+the system FFTW selects AVX2 codelets at run time, and a single 1-D
+transform below the four-step threshold runs scalar in ducc0. Per-call R overhead is
 about 5 µs, so `stats::fft()` (no argument handling) stays faster below a
 few thousand points.
 
@@ -843,14 +848,19 @@ few thousand points.
 
 **Targets (`workers = 1` unless stated):**
 
-| Case | Target | macOS arm64 (Stage 3) |
-| --- | --- | --- |
-| Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× | met: worst 1.02× |
-| Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) | met: 0.46–0.68× |
-| Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) | met: 0.69–1.02× |
-| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | Stage 6 |
-| `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× | met: 6.5× |
-| `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× | met: 651× |
+| Case | Target | macOS arm64 (Stage 3) | Linux x86-64 runner (Stage 3) |
+| --- | --- | --- | --- |
+| Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× | met: worst 1.02× | met: worst 1.44× |
+| Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) | met: 0.46–0.68× | met: 0.54–0.83× |
+| Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) | met: 0.69–1.02× | **missed**: complex 1 000 003 at 1.23× (100 003 at 1.11×, real 0.73–0.82×) |
+| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | Stage 6 | Stage 6 |
+| `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× | met: 6.5× | met: 8.0× |
+| `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× | met: 651× | met: 624× |
+
+The one miss is reported, not relaxed. It is within the 1.5× bound that
+governs every grid point, it is a single 1-D complex transform on a shared
+runner, and it is the case option (b) below addresses; Stage 8's full run
+re-measures it.
 
 **Where to expect a gap, and what to do about it.** The weakest cases
 are single 1-D transforms below the four-step threshold (§6.5): ducc0
