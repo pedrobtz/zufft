@@ -1,0 +1,32 @@
+Pass the scratch buffer as buf.data(), not &buf[0], in the allocating
+exec() overloads of T_dcst23 and T_dcst4.
+
+When a plan needs no scratch space (a length-1 DST-II or DST-III, for
+example) the aligned_array is empty and its data pointer is null, and
+&buf[0] goes through aligned_array::operator[], which binds a reference to
+*nullptr: undefined behaviour that UBSan reports as "reference binding to
+null pointer of type 'double'" (aligned_array.h:153). CRAN's UBSan flavors
+would list it under "Additional issues". data() returns the same pointer
+without forming the reference. Found by the clang and gcc UBSan legs of
+pedrobtz/zufft#19 (Stage 4).
+
+--- a/fft/fft.h	2026-10-13 05:05:54
++++ b/fft/fft.h	2026-10-13 05:05:54
+@@ -701,7 +701,7 @@
+       int type, bool cosine, size_t nthreads=1) const
+       {
+       aligned_array<T> buf(bufsize());
+-      exec(c, &buf[0], fct, ortho, type, cosine, nthreads);
++      exec(c, buf.data(), fct, ortho, type, cosine, nthreads);
+       }
+ 
+     size_t length() const { return fftplan.length(); }
+@@ -820,7 +820,7 @@
+       bool /*ortho*/, int /*type*/, bool cosine, size_t nthreads=1) const
+       {
+       aligned_array<T> buf(bufsize());
+-      exec(c, &buf[0], fct, true, 4, cosine, nthreads);
++      exec(c, buf.data(), fct, true, 4, cosine, nthreads);
+       }
+ 
+     size_t length() const { return N; }

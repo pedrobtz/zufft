@@ -152,8 +152,8 @@ in.
   when SciPy does (design §8).
 - `tools/vendor/verify` is the offline check CI runs; never edit a file in
   `src/ducc0/`. Changes to vendored files go in `tools/vendor/patches/`,
-  each with its reason; there is one, for clang `-pedantic` (CRAN's
-  debian-clang flavor). zufft's adaptations live beside it: the custom threading
+  each with its reason; there are two, for clang `-pedantic` (CRAN's
+  debian-clang flavor) and for a UBSan finding in the DCT/DST plans. zufft's adaptations live beside it: the custom threading
   header, the `.cc` wrappers and the instantiation units.
 - **No `-f`, `-m` or `-O` flag in `Makevars`.** R CMD check warns about them
   ("checking compilation flags in Makevars"). Fused multiply-add contraction

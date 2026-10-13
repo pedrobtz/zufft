@@ -265,6 +265,12 @@ with `norm`, `orthogonalize` and SciPy's complex-input rule.
 
 **Design.** §5.1, §6.1, §6.3.
 
+**Deviation (2026-10-13).** A second patch to a vendored file:
+`tools/vendor/patches/0002-dcst-scratch-buffer-data.patch` fixes undefined
+behaviour in ducc0's DCT/DST plans (a reference bound to a null pointer for
+plans without scratch space), found by this stage's UBSan legs. Design §8
+records it.
+
 ## Stage 5 — Helpers and stats compatibility
 
 **Issue.** [#8](https://github.com/pedrobtz/zufft/issues/8), sub-issue of
