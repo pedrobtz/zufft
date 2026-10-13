@@ -1,0 +1,30 @@
+# The vendored ducc0 subset (design §8): src/ducc0 must match
+# tools/vendor/manifest.tsv and tools/vendor/checksums.sha256, every file
+# must carry the dual "BSD-3-Clause OR GPL-2.0-or-later" SPDX line, and a
+# pull request that touches src/ducc0 must update both manifest files.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+name: vendor
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  vendor:
+    uses: pedrobtz/r-actions/.github/workflows/vendor.yml@v1
+    with:
+      vendor-dir: src/ducc0
+
+  selftest:
+    runs-on: ubuntu-latest
+    name: verifier rejects unlisted and edited files
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./tools/vendor/verify-selftest
