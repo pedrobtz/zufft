@@ -4,6 +4,7 @@
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
 
+#include "zff_r.h"
 #include "zff_shim.h"
 #include "zff_version.h"
 
@@ -59,6 +60,7 @@ static const R_CallMethodDef call_methods[] = {
   {"zff_info", (DL_FUNC) &zff_info, 0},
   {"zff_scratch_c2c_call", (DL_FUNC) &zff_scratch_c2c, 2},
   {"zff_stress_call", (DL_FUNC) &zff_stress, 3},
+  {"zff_fft_call", (DL_FUNC) &zff_fft, 8},
   {NULL, NULL, 0}
 };
 

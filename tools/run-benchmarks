@@ -1,0 +1,176 @@
+#!/usr/bin/env Rscript
+# Benchmarks of design §11: zufft against fftwtools, stats::fft() and, where
+# installed, the fftw package, on the same machine in the same session.
+#
+#   tools/run-benchmarks [--label NAME] [--workers 1,2] [--out FILE] [--quick]
+#
+# Medians from bench::mark() with a warm plan cache; the first call of each
+# shape is timed on its own as "cold" (zufft builds and caches its plan
+# there, while fftwtools plans on every call). Writes a Markdown section to
+# FILE (default bench/results-<label>.md) and prints it.
+suppressPackageStartupMessages({
+  library(zufft)
+  library(bench)
+})
+
+args <- commandArgs(trailingOnly = TRUE)
+opt <- function(name, default) {
+  i <- match(paste0("--", name), args)
+  if (is.na(i)) default else args[i + 1]
+}
+quick <- "--quick" %in% args
+label <- opt("label", paste(Sys.info()[["sysname"]], R.version$arch, sep = "-"))
+workers <- as.integer(strsplit(opt("workers", "1"), ",")[[1]])
+out_file <- opt("out", file.path("bench", paste0("results-", label, ".md")))
+
+has_fftwtools <- requireNamespace("fftwtools", quietly = TRUE)
+has_fftw <- requireNamespace("fftw", quietly = TRUE)
+set.seed(1)
+
+median_s <- function(expr_fn) {
+  b <- bench::mark(expr_fn(), check = FALSE, min_time = if (quick) 0.1 else 0.5,
+                   min_iterations = 3, max_iterations = 2000, filter_gc = FALSE)
+  as.numeric(b$median)
+}
+cold_s <- function(expr_fn) {
+  t0 <- bench::hires_time()
+  expr_fn()
+  as.numeric(bench::hires_time() - t0)
+}
+fmt <- function(s) {
+  if (is.na(s)) return("—")
+  if (s < 1e-3) sprintf("%.1f µs", s * 1e6)
+  else if (s < 1) sprintf("%.2f ms", s * 1e3)
+  else sprintf("%.2f s", s)
+}
+ratio <- function(a, b) if (is.na(a) || is.na(b)) "—" else sprintf("%.2f", a / b)
+
+# Each case: zufft call, fftwtools equivalent, stats equivalent (or NULL).
+cases <- list()
+add <- function(name, data, z, ft = NULL, st = NULL, fw = NULL, slow_stats = FALSE) {
+  cases[[length(cases) + 1]] <<- list(name = name, data = data, z = z, ft = ft,
+                                       st = st, fw = fw, slow_stats = slow_stats)
+}
+
+lens <- c(2^10, 2^16, 2^20, 2^22, 3^7 * 5^3, 1e5, 1e6)
+primes <- c(10007, 100003, 1000003)
+if (quick) {
+  lens <- c(2^10, 2^16, 1e5)
+  primes <- c(10007)
+}
+for (n in c(lens, primes)) {
+  isprime <- n %in% primes
+  zc <- complex(real = rnorm(n), imaginary = rnorm(n))
+  xr <- rnorm(n)
+  add(sprintf("1-D complex %s", format(n, scientific = FALSE, big.mark = " ")), zc,
+      function(d, w) fft_c2c(d, workers = w),
+      function(d) fftwtools::fftw_c2c(d),
+      function(d) stats::fft(d),
+      function(d) fftw::FFT(d),
+      slow_stats = isprime && n > 1e4)
+  add(sprintf("1-D real %s", format(n, scientific = FALSE, big.mark = " ")), xr,
+      function(d, w) fft_r2c(d, workers = w),
+      function(d) fftwtools::fftw_r2c(d, HermConj = 0),
+      function(d) stats::fft(d),
+      NULL,
+      slow_stats = isprime && n > 1e4)
+}
+for (sh in list(c(1024, 1024), c(16384, 64))) {
+  mc <- matrix(complex(real = rnorm(prod(sh)), imaginary = rnorm(prod(sh))), sh[1])
+  mr <- matrix(rnorm(prod(sh)), sh[1])
+  nm <- paste(sh, collapse = " × ")
+  add(paste("columns complex", nm), mc,
+      function(d, w) fft_c2c(d, axes = 1, workers = w),
+      function(d) fftwtools::mvfftw_c2c(d),
+      function(d) stats::mvfft(d))
+  add(paste("columns real", nm), mr,
+      function(d, w) fft_r2c(d, axes = 1, workers = w),
+      function(d) fftwtools::mvfftw_r2c(d, HermConj = 0),
+      function(d) stats::mvfft(d))
+  add(paste("columns real, full spectrum", nm), mr,
+      function(d, w) fft_c2c(d, axes = 1, workers = w),
+      function(d) fftwtools::mvfftw_r2c(d, HermConj = 1),
+      NULL)
+}
+for (s in if (quick) 512 else c(512, 2048)) {
+  mc <- matrix(complex(real = rnorm(s * s), imaginary = rnorm(s * s)), s)
+  mr <- matrix(rnorm(s * s), s)
+  nm <- sprintf("%d²", s)
+  add(paste("2-D complex", nm), mc,
+      function(d, w) fft_c2c(d, workers = w),
+      function(d) fftwtools::fftw_c2c_2d(d),
+      function(d) stats::fft(d))
+  # fftwtools halves R's first axis (FFTW is row-major): axes = 2:1.
+  add(paste("2-D real", nm), mr,
+      function(d, w) fft_r2c(d, axes = 2:1, workers = w),
+      function(d) fftwtools::fftw_r2c_2d(d, HermConj = 0),
+      function(d) stats::fft(d))
+  add(paste("2-D real, full spectrum", nm), mr,
+      function(d, w) fft_c2c(d, workers = w),
+      function(d) fftwtools::fftw2d(d),
+      NULL)
+}
+if (!quick) {
+  ac <- array(complex(real = rnorm(128^3), imaginary = rnorm(128^3)), c(128, 128, 128))
+  add("3-D complex 128³", ac,
+      function(d, w) fft_c2c(d, workers = w),
+      function(d) fftwtools::fftw_c2c_3d(d),
+      function(d) stats::fft(d))
+}
+
+rows <- list()
+for (cs in cases) {
+  d <- cs$data
+  for (w in workers) {
+    zc <- cold_s(function() cs$z(d, w))
+    zt <- median_s(function() cs$z(d, w))
+    ft <- if (has_fftwtools && !is.null(cs$ft)) median_s(function() cs$ft(d)) else NA
+    fw <- if (has_fftw && !is.null(cs$fw) && w == 1) median_s(function() cs$fw(d)) else NA
+    # stats::fft() is quadratic in a large prime factor: time it once, and
+    # not at all beyond 2e5 (the million-point prime would take hours).
+    st <- if (!is.null(cs$st) && w == 1) {
+      if (cs$slow_stats && length(d) > 2e5) NA
+      else if (cs$slow_stats) cold_s(function() cs$st(d))
+      else median_s(function() cs$st(d))
+    } else NA
+    rows[[length(rows) + 1]] <- data.frame(
+      case = cs$name, workers = w, zufft = zt, cold = zc, fftwtools = ft,
+      fftw = fw, stats = st, stringsAsFactors = FALSE)
+    cat(sprintf("%-40s w=%d zufft %s  fftwtools %s  ratio %s\n", cs$name, w,
+                fmt(zt), fmt(ft), ratio(zt, ft)))
+  }
+}
+res <- do.call(rbind, rows)
+
+info <- zufft_info()
+fftw_ver <- if (has_fftwtools) {
+  tryCatch(as.character(utils::packageVersion("fftwtools")), error = function(e) "?")
+} else "not installed"
+hdr <- c(
+  sprintf("## %s", label),
+  "",
+  sprintf("- Date: %s", format(Sys.Date())),
+  sprintf("- Machine: %s, %s, %d hardware threads", Sys.info()[["sysname"]],
+          R.version$arch, info$hardware_threads),
+  sprintf("- R %s; zufft %s (ducc0 %s, SIMD %s × %d, FMA %s, complex path %s)",
+          getRversion(), utils::packageVersion("zufft"), substr(info$ducc0_commit, 1, 7),
+          info$simd_backend, info$simd_width, info$fma, info$complex_path),
+  sprintf("- fftwtools %s%s", fftw_ver,
+          if (has_fftw) sprintf(", fftw %s", utils::packageVersion("fftw")) else ""),
+  "- Medians from `bench::mark()` with a warm plan cache; \"cold\" is zufft's first call of that shape.",
+  "- Ratio is zufft time over fftwtools time: below 1 means zufft is faster.",
+  "",
+  "| Case | Workers | zufft | zufft cold | fftwtools | zufft / fftwtools | fftw | stats |",
+  "| --- | --- | --- | --- | --- | --- | --- | --- |"
+)
+body <- vapply(seq_len(nrow(res)), function(i) {
+  r <- res[i, ]
+  sprintf("| %s | %d | %s | %s | %s | %s | %s | %s |", r$case, r$workers, fmt(r$zufft),
+          fmt(r$cold), fmt(r$fftwtools), ratio(r$zufft, r$fftwtools), fmt(r$fftw),
+          fmt(r$stats))
+}, character(1))
+md <- c(hdr, body, "")
+dir.create(dirname(out_file), showWarnings = FALSE, recursive = TRUE)
+writeLines(md, out_file)
+utils::write.csv(res, sub("\\.md$", ".csv", out_file), row.names = FALSE)
+cat("\n", md, sep = "\n")

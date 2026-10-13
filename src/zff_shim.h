@@ -39,6 +39,23 @@ int zff_c2c(const zff_layout *lin, const double *in, const zff_layout *lout,
             double *out, int naxes, const int *axes, int forward, double fct,
             int nthreads);
 
+/* Real-to-complex: the output's last listed axis has n / 2 + 1 entries. */
+int zff_r2c(const zff_layout *lin, const double *in, const zff_layout *lout,
+            double *out, int naxes, const int *axes, int forward, double fct,
+            int nthreads);
+
+/* Complex-to-real: the input's last listed axis has n / 2 + 1 entries, where
+ * n is the output's extent there. The input is not modified. */
+int zff_c2r(const zff_layout *lin, const double *in, const zff_layout *lout,
+            double *out, int naxes, const int *axes, int forward, double fct,
+            int nthreads);
+
+/* Complex transform of real input: full-length complex output, the second
+ * half filled by Hermitian symmetry (SciPy's c2c_sym_internal). */
+int zff_c2c_real(const zff_layout *lin, const double *in,
+                 const zff_layout *lout, double *out, int naxes,
+                 const int *axes, int forward, double fct, int nthreads);
+
 /* "zero-copy" or "marshal" (design §12.2). */
 const char *zff_complex_path(void);
 

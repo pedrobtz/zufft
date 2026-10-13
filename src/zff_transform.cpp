@@ -104,11 +104,11 @@ shape_t get_axes(int naxes, const int *axes, std::size_t ndim) {
 
 std::size_t nthreads_of(int nthreads) { return nthreads < 1 ? 1 : std::size_t(nthreads); }
 
-#ifdef ZFF_COMPLEX_MARSHAL
 /* Visits every element of a shape in column-major order with its element
- * offsets in two strided layouts. */
+ * offsets in two strided layouts (marshal path only). */
 template <typename F>
-void for_each_offset(const shape_t &shape, const stride_t &sa, const stride_t &sb, F f) {
+[[maybe_unused]] void for_each_offset(const shape_t &shape, const stride_t &sa,
+                                      const stride_t &sb, F f) {
   const std::size_t nd = shape.size();
   std::vector<std::size_t> idx(nd, 0);
   std::ptrdiff_t oa = 0, ob = 0;
@@ -127,7 +127,7 @@ void for_each_offset(const shape_t &shape, const stride_t &sa, const stride_t &s
   }
 }
 
-stride_t dense_stride(const shape_t &shape) {
+[[maybe_unused]] stride_t dense_stride(const shape_t &shape) {
   stride_t s(shape.size());
   std::ptrdiff_t acc = 1;
   for (std::size_t i = 0; i < shape.size(); ++i) {
@@ -137,12 +137,88 @@ stride_t dense_stride(const shape_t &shape) {
   return s;
 }
 
-std::size_t count(const shape_t &shape) {
+[[maybe_unused]] std::size_t count(const shape_t &shape) {
   std::size_t n = 1;
   for (auto s : shape) n *= s;
   return n;
 }
+
+/* A complex input buffer as ducc0 sees it: viewed in place (zero-copy) or
+ * copied into genuine std::complex<double> storage (marshal). */
+class complex_in {
+ public:
+  complex_in(const double *p, const shape_t &shape, const stride_t &stride)
+#ifdef ZFF_COMPLEX_MARSHAL
+      : buf_(count(shape)),
+        view_(buf_.data(), shape, dense_stride(shape)) {
+    const stride_t dense = dense_stride(shape);
+    for_each_offset(shape, stride, dense, [&](std::ptrdiff_t oi, std::ptrdiff_t ob) {
+      buf_[std::size_t(ob)] = cplx(p[2 * oi], p[2 * oi + 1]);
+    });
+  }
+#else
+      : view_(reinterpret_cast<const cplx *>(p), shape, stride) {
+  }
 #endif
+  const cfmav<cplx> &view() const { return view_; }
+
+ private:
+#ifdef ZFF_COMPLEX_MARSHAL
+  std::vector<cplx> buf_;
+#endif
+  cfmav<cplx> view_;
+};
+
+/* A complex output buffer as ducc0 sees it; finish() copies a marshalled
+ * result back. */
+class complex_out {
+ public:
+  complex_out(double *p, const shape_t &shape, const stride_t &stride)
+#ifdef ZFF_COMPLEX_MARSHAL
+      : p_(p), shape_(shape), stride_(stride), buf_(count(shape)),
+        view_(buf_.data(), shape, dense_stride(shape)) {
+  }
+#else
+      : view_(reinterpret_cast<cplx *>(p), shape, stride) {
+  }
+#endif
+  const vfmav<cplx> &view() const { return view_; }
+  void finish() {
+#ifdef ZFF_COMPLEX_MARSHAL
+    const stride_t dense = dense_stride(shape_);
+    for_each_offset(shape_, stride_, dense, [&](std::ptrdiff_t oo, std::ptrdiff_t ob) {
+      p_[2 * oo] = buf_[std::size_t(ob)].real();
+      p_[2 * oo + 1] = buf_[std::size_t(ob)].imag();
+    });
+#endif
+  }
+
+ private:
+#ifdef ZFF_COMPLEX_MARSHAL
+  double *p_;
+  shape_t shape_;
+  stride_t stride_;
+  std::vector<cplx> buf_;
+#endif
+  vfmav<cplx> view_;
+};
+
+int finish_ok() {
+  zff_clear_message();
+  return ZFF_OK;
+}
+
+int finish_error(const zff_error &e) {
+  zff_set_message(e.msg);
+  return e.status;
+}
+
+/* Shape of the half-complex side of a real transform: the last axis holds
+ * n / 2 + 1 values. */
+shape_t half_shape(shape_t shape, const shape_t &axes) {
+  shape[axes.back()] = shape[axes.back()] / 2 + 1;
+  return shape;
+}
 
 }  // namespace
 
@@ -165,28 +241,84 @@ extern "C" int zff_c2c(const zff_layout *lin, const double *in,
     const shape_t ax = get_axes(naxes, axes, shape.size());
     if (in == out && sin != sout)
       fail(ZFF_EINVAL, "in-place transform needs identical layouts");
-#ifndef ZFF_COMPLEX_MARSHAL
-    const cfmav<cplx> vin(reinterpret_cast<const cplx *>(in), shape, sin);
-    const vfmav<cplx> vout(reinterpret_cast<cplx *>(out), shape, sout);
-    ducc0::c2c(vin, vout, ax, forward != 0, fct, nthreads_of(nthreads));
-#else
-    const stride_t dense = dense_stride(shape);
-    std::vector<cplx> buf(count(shape));
-    for_each_offset(shape, sin, dense, [&](std::ptrdiff_t oi, std::ptrdiff_t ob) {
-      buf[std::size_t(ob)] = cplx(in[2 * oi], in[2 * oi + 1]);
-    });
-    const vfmav<cplx> vbuf(buf.data(), shape, dense);
-    ducc0::c2c(cfmav<cplx>(vbuf), vbuf, ax, forward != 0, fct, nthreads_of(nthreads));
-    for_each_offset(shape, sout, dense, [&](std::ptrdiff_t oo, std::ptrdiff_t ob) {
-      out[2 * oo] = buf[std::size_t(ob)].real();
-      out[2 * oo + 1] = buf[std::size_t(ob)].imag();
-    });
-#endif
-    zff_clear_message();
-    return ZFF_OK;
+    complex_in cin(in, shape, sin);
+    complex_out cout(out, shape, sout);
+    ducc0::c2c(cin.view(), cout.view(), ax, forward != 0, fct, nthreads_of(nthreads));
+    cout.finish();
+    return finish_ok();
   } catch (const zff_error &e) {
-    zff_set_message(e.msg);
-    return e.status;
+    return finish_error(e);
+  } catch (...) {
+    return zff_status_from_exception();
+  }
+}
+
+extern "C" int zff_r2c(const zff_layout *lin, const double *in,
+                       const zff_layout *lout, double *out, int naxes,
+                       const int *axes, int forward, double fct, int nthreads) {
+  try {
+    if (!in || !out) fail(ZFF_EINVAL, "NULL data pointer");
+    const shape_t shape = get_shape(lin);
+    const shape_t ax = get_axes(naxes, axes, shape.size());
+    const shape_t oshape = half_shape(shape, ax);
+    if (get_shape(lout) != oshape) fail(ZFF_ESHAPE, "output shape must halve the last axis");
+    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, oshape);
+    const cfmav<double> vin(in, shape, sin);
+    complex_out cout(out, oshape, sout);
+    ducc0::r2c(vin, cout.view(), ax, forward != 0, fct, nthreads_of(nthreads));
+    cout.finish();
+    return finish_ok();
+  } catch (const zff_error &e) {
+    return finish_error(e);
+  } catch (...) {
+    return zff_status_from_exception();
+  }
+}
+
+extern "C" int zff_c2r(const zff_layout *lin, const double *in,
+                       const zff_layout *lout, double *out, int naxes,
+                       const int *axes, int forward, double fct, int nthreads) {
+  try {
+    if (!in || !out) fail(ZFF_EINVAL, "NULL data pointer");
+    const shape_t oshape = get_shape(lout);
+    const shape_t ax = get_axes(naxes, axes, oshape.size());
+    const shape_t shape = half_shape(oshape, ax);
+    if (get_shape(lin) != shape) fail(ZFF_ESHAPE, "input shape must be the halved output shape");
+    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, oshape);
+    complex_in cin(in, shape, sin);
+    const vfmav<double> vout(out, oshape, sout);
+    ducc0::c2r(cin.view(), vout, ax, forward != 0, fct, nthreads_of(nthreads));
+    return finish_ok();
+  } catch (const zff_error &e) {
+    return finish_error(e);
+  } catch (...) {
+    return zff_status_from_exception();
+  }
+}
+
+/* Complex transform of real input, as SciPy's c2c_sym_internal does it: a
+ * real-to-complex transform into the first half of the last axis, then the
+ * other half filled by Hermitian symmetry (zff_inst_r2c.cpp). */
+void zff_hermitian_fill(const vfmav<cplx> &out, const shape_t &axes, std::size_t nthreads);
+
+extern "C" int zff_c2c_real(const zff_layout *lin, const double *in,
+                            const zff_layout *lout, double *out, int naxes,
+                            const int *axes, int forward, double fct, int nthreads) {
+  try {
+    if (!in || !out) fail(ZFF_EINVAL, "NULL data pointer");
+    const shape_t shape = get_shape(lin);
+    if (get_shape(lout) != shape) fail(ZFF_ESHAPE, "input and output shapes differ");
+    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, shape);
+    const shape_t ax = get_axes(naxes, axes, shape.size());
+    const cfmav<double> vin(in, shape, sin);
+    complex_out cout(out, shape, sout);
+    const vfmav<cplx> half(cout.view().data(), half_shape(shape, ax), cout.view().stride());
+    ducc0::r2c(vin, half, ax, forward != 0, fct, nthreads_of(nthreads));
+    zff_hermitian_fill(cout.view(), ax, nthreads_of(nthreads));
+    cout.finish();
+    return finish_ok();
+  } catch (const zff_error &e) {
+    return finish_error(e);
   } catch (...) {
     return zff_status_from_exception();
   }
