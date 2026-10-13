@@ -2,3 +2,4 @@ docs
 tests/testthat/fixtures/*/src/*.o
 tests/testthat/fixtures/*/src/*.so
 tests/testthat/fixtures/*/src/*.dll
+CRAN-S*
