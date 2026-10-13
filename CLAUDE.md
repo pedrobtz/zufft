@@ -176,6 +176,9 @@ Workflows come from `pedrobtz/r-actions`, pinned to `@v1`: `r-cmd-check.yml`
 (quick on pull requests, full on `main`, full on a pull request with the
 `full-ci` label), `coverage.yml`, `vendor.yml` and the pkgdown workflow.
 `build-flags.yaml` is local: it fails on the NOTEs r-actions lets through.
+The coverage badge is committed to `gh-pages` (`badges/coverage.svg`), because
+the `main` ruleset takes no direct pushes; the pkgdown deploy must not
+force-push or clean that branch.
 
 ## Commits and pull requests
 
