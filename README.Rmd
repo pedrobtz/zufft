@@ -29,10 +29,12 @@ fftwtools, without the need for FFTW:
 * `fft_stats()` and `mvfft_stats()` are drop-in replacements for
   `stats::fft()` and `stats::mvfft()`.
 
-The names will be familiar if you've used fftwtools. The conventions for
-axes, normalisation and the DCT and DST definitions follow `scipy.fft`.
-Helpers such as `fft_next_len()`, `fft_freq()` and `fft_shift()` mirror
-SciPy's `next_fast_len()`, `fftfreq()` and `fftshift()`.
+The names will be familiar if you've used fftwtools, and
+`vignette("migrating-from-fftwtools")` maps every fftwtools function to its
+zufft equivalent. The conventions for axes, normalisation and the DCT and
+DST definitions follow `scipy.fft`. Helpers such as `fft_next_len()`,
+`fft_freq()` and `fft_shift()` mirror SciPy's `next_fast_len()`,
+`fftfreq()` and `fftshift()`.
 
 zufft bundles the BSD-licensed FFT code of
 [ducc0](https://github.com/mreineck/ducc), the same files and commit that
@@ -112,18 +114,6 @@ can zero-pad the input to it:
 ```{r}
 fft_next_len(1009)
 ```
-
-## Coming from fftwtools or scipy.fft
-
-`vignette("migrating-from-fftwtools")` maps every fftwtools function to its
-zufft equivalent. The main thing to remember is scaling: zufft scales
-inverse transforms by `1/n`, as SciPy does. Use `norm = "none"` if you want
-the unscaled inverse that fftwtools and `stats::fft()` return.
-
-If you're coming from Python, the
-[scipy.fft article](https://pedrobtz.github.io/zufft/articles/zufft-for-scipy-users.html)
-covers the other side. The definitions match, and the test suite checks
-zufft against SciPy on 2040 cases.
 
 ## Speed
 
