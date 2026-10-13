@@ -16,8 +16,9 @@ library and carries no GPL code.
 
 - **Replaces fftwtools without FFTW.** `install.packages()` is enough,
   on every platform, and the licence is MIT.
-- **Fast.** Faster than fftwtools on most of the benchmark grid and
-  within 1.5 times on the rest; threads help further.
+- **Fast.** With CRAN’s build, faster than fftwtools on 30 of 33
+  benchmark cases and within 1.26 times on the rest; threads help
+  further.
 - **Familiar.** Names a fftwtools user knows (`fft_c2c()`, `fft_r2c()`,
   `fft_c2r()`), the conventions of `scipy.fft` for axes, normalisation
   and cosine and sine transforms, and drop-in replacements for
@@ -81,20 +82,36 @@ covers the Python side: the definitions match, and the test suite checks
 
 ## Speed
 
-Medians on an Apple M-series laptop, against fftwtools on Homebrew’s
-FFTW, from `bench/RESULTS.md` (which also has a Linux x86-64 runner):
+zufft does not need a native build to keep up with fftwtools. On a Linux
+x86-64 runner, against fftwtools on Ubuntu’s FFTW (built with SSE2 and
+AVX vector code), one thread, from `bench/RESULTS.md`:
 
-| Case                     | zufft, 1 thread | zufft, 2 threads | fftwtools |
-|--------------------------|-----------------|------------------|-----------|
-| 1-D complex 1 048 576    | 11.94 ms        | 6.98 ms          | 20.47 ms  |
-| 1-D real 1 000 000       | 6.47 ms         | 3.91 ms          | 8.95 ms   |
-| columns real 1024 × 1024 | 1.64 ms         | 898.6 µs         | 3.21 ms   |
-| 2-D complex 2048²        | 38.19 ms        | 20.31 ms         | 123.25 ms |
-| 3-D complex 128³         | 16.29 ms        | 9.20 ms          | 88.70 ms  |
+| Case | fftwtools | zufft, CRAN build | ratio | zufft native, ratio |
+|----|----|----|----|----|
+| 1-D complex 1 048 576 | 27.02 ms | 20.64 ms | 0.76 | 0.59 |
+| 1-D real 1 000 000 | 16.50 ms | 11.77 ms | 0.71 | 0.57 |
+| columns real 1024 × 1024 | 5.97 ms | 2.55 ms | 0.43 | 0.34 |
+| 2-D complex 2048² | 279.85 ms | 67.76 ms | 0.24 | 0.19 |
+| 3-D complex 128³ | 44.80 ms | 34.10 ms | 0.76 | 0.83 |
+| 1-D complex 100 000 | 1.44 ms | 1.81 ms | 1.26 | 0.83 |
 
-zufft caches its plans, where fftwtools plans every call, and transforms
-of any length run in O(n log n): a prime length of 100 003 takes 6.39 ms
-here against 4.17 s for `stats::fft()`.
+A ratio below 1 means zufft is faster. With CRAN’s portable build
+(SSE2), zufft is faster on 30 of the 33 benchmark cases. The three where
+it is slower are single 1-D complex transforms of about 10^5 to 10^6
+points that cannot be split into lines (worst 1.26 times). Built for the
+local CPU (below, AVX2 here), zufft is faster on all 33. Each ratio
+compares runs on the same machine; the two builds ran on separate
+runners.
+
+Most of the margin comes from planning: zufft caches its plans, while
+fftwtools builds a new FFTW plan on every call. Threads add more
+(`workers = 2`), which fftwtools does not offer. Transforms of any
+length run in O(n log n): a prime length of 100 003 takes milliseconds,
+against seconds for `stats::fft()`.
+
+On Apple silicon the gap is wider, but partly because Homebrew’s FFTW
+has no vector code for double precision there; `bench/RESULTS.md` has
+those numbers too.
 
 R stores arrays column by column, so the first dimension is the
 contiguous one. With `axes = NULL` the real transforms halve that

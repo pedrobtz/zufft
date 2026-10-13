@@ -21,6 +21,16 @@ How to read the cases:
 Shared CI runners are noisy, so read their ratios rather than their
 absolute times.
 
+The FFTW under fftwtools matters. Ubuntu's FFTW (the Linux sections) is
+built with `--enable-sse2 --enable-avx` for double precision, so FFTW picks
+AVX codelets at run time. Homebrew's FFTW on Apple silicon (the macOS
+section) has no vector code for double precision: FFTW 3.3's NEON support
+is single precision only, and its version string reads plain
+`fftw-3.3.11`. fftwtools itself adds no compiler flags; its one option,
+`fftplanopt = 1` (`FFTW_MEASURE`) for the column-wise functions, made
+complex columns about three times slower and real columns about 17%
+faster in a local check, because fftwtools still re-plans on every call.
+
 ## macOS arm64 (Apple M-series laptop)
 
 - Date: 2026-10-13
