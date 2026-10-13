@@ -105,5 +105,8 @@ fft_r2c(m)
 }
 \seealso{
 \code{\link[stats:fft]{stats::fft()}} for R's own complex transform.
+
+Other transforms:
+\code{\link[=fft_dct]{fft_dct()}}
 }
 \concept{transforms}

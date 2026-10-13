@@ -45,3 +45,32 @@ fft_axes_oracle <- function(a, axes, inverse = FALSE) {
 }
 
 random_complex <- function(n) complex(real = rnorm(n), imaginary = rnorm(n))
+
+# SciPy's unnormalised DCT and DST definitions, by direct summation.
+r2r_direct <- function(x, kind = c("dct", "dst"), type = 2) {
+  kind <- match.arg(kind)
+  N <- length(x)
+  k <- 0:(N - 1)
+  nn <- 0:(N - 1)
+  y <- numeric(N)
+  for (i in seq_len(N)) {
+    kk <- k[i]
+    y[i] <- switch(
+      paste(kind, type),
+      "dct 1" = x[1] +
+        (-1)^kk * x[N] +
+        2 * sum(x[-c(1, N)] * cos(pi * kk * nn[-c(1, N)] / (N - 1))),
+      "dct 2" = 2 * sum(x * cos(pi * kk * (2 * nn + 1) / (2 * N))),
+      "dct 3" = x[1] +
+        2 * sum(x[-1] * cos(pi * (2 * kk + 1) * nn[-1] / (2 * N))),
+      "dct 4" = 2 * sum(x * cos(pi * (2 * kk + 1) * (2 * nn + 1) / (4 * N))),
+      "dst 1" = 2 * sum(x * sin(pi * (kk + 1) * (nn + 1) / (N + 1))),
+      "dst 2" = 2 * sum(x * sin(pi * (kk + 1) * (2 * nn + 1) / (2 * N))),
+      "dst 3" = (-1)^kk *
+        x[N] +
+        2 * sum(x[-N] * sin(pi * (2 * kk + 1) * (nn[-N] + 1) / (2 * N))),
+      "dst 4" = 2 * sum(x * sin(pi * (2 * kk + 1) * (2 * nn + 1) / (4 * N)))
+    )
+  }
+  y
+}
