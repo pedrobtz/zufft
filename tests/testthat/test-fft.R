@@ -272,11 +272,11 @@ test_that("an empty untransformed axis gives an empty result", {
   expect_identical(dim(fft_r2c(m, axes = 2)), c(0L, 3L))
 })
 
-test_that("workers is validated and gives identical results", {
+test_that("workers is validated and the results agree", {
   withr::local_seed(22)
   m <- matrix(rnorm(64 * 64), 64)
-  expect_identical(fft_c2c(m, workers = 2), fft_c2c(m, workers = 1))
-  expect_identical(fft_c2c(m, workers = -1), fft_c2c(m))
+  expect_threads_equal(fft_c2c(m, workers = 2), fft_c2c(m, workers = 1))
+  expect_threads_equal(fft_c2c(m, workers = -1), fft_c2c(m))
   expect_error(fft_c2c(m, workers = 0), class = "zufft_invalid_argument")
   expect_error(fft_c2c(m, workers = 1.5), class = "zufft_invalid_argument")
   expect_error(fft_c2c(m, workers = -1e6), class = "zufft_invalid_argument")

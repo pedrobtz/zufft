@@ -49,8 +49,9 @@
 #'   means all of them. Requests are capped at the available cores, and at
 #'   2 when `_R_CHECK_LIMIT_CORES_` is set. Threads split the independent
 #'   1-D transforms of a multi-dimensional array, so they help only arrays
-#'   with at least 32 768 elements and more than one line; results are
-#'   identical whatever the number of threads.
+#'   with at least 32 768 elements and more than one line. Results agree to
+#'   rounding whatever the number of threads; they are bit-identical on
+#'   builds without fused multiply-add (CRAN's x86-64 builds).
 #'
 #' @return For `fft_c2c()` and `fft_r2c()` a complex vector or array, for
 #'   `fft_c2r()` a double one. Arrays keep their `dim`, with the transformed

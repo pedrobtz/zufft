@@ -26,12 +26,12 @@ test_that("local_fft_workers() restores the old value when the frame exits", {
   expect_identical(fft_workers(), 1L)
 })
 
-test_that("the default reaches the transforms and the results do not change", {
+test_that("the default reaches the transforms and the results agree", {
   withr::local_seed(61)
   m <- matrix(rnorm(256 * 256), 256)
   base <- fft_c2c(m, axes = 1)
-  expect_identical(with_fft_workers(2, fft_c2c(m, axes = 1)), base)
-  expect_identical(with_fft_workers(-1, fft_c2c(m, axes = 1)), base)
+  expect_threads_equal(with_fft_workers(2, fft_c2c(m, axes = 1)), base)
+  expect_threads_equal(with_fft_workers(-1, fft_c2c(m, axes = 1)), base)
 })
 
 test_that("bad values are rejected", {

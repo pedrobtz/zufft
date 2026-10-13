@@ -805,9 +805,20 @@ length below the minimum, or an output beyond R's vector limits),
   `"ortho"`); linearity; the shift theorem; Hermitian symmetry of
   `fft_c2c()` on real input; DCT-II and DCT-III as an inverse pair; DCT-II
   equal to an FFT of the even extension.
-- **Threads.** Results with `workers = 1` and `workers = 2` are identical
-  (expected, since ducc0 splits independent 1-D transforms; a difference
-  is reported, not hidden); concurrent C-table callers; repeated pool
+- **Threads.** Results with `workers = 1` and `workers = 2` were expected
+  to be identical, since ducc0 splits independent 1-D transforms; a
+  difference is reported, not hidden. **Reported (Stage 6):** on hardware
+  with fused multiply-add they can differ in the last bit. ducc0 runs lines
+  in SIMD batches plus a scalar tail, the batch boundaries depend on how
+  the lines are split between threads, and with contraction allowed
+  (§12.3) the vector and scalar paths round differently. With contraction
+  off every comparison was bit-identical on an arm64 Mac, at a cost of 1–4%
+  in speed (`fft_r2c()` 2048² 14.7 → 15.2 ms, `fft_c2c()` 2^20 11.7 →
+  12.2 ms). The tests assert bit-identity on builds without FMA (CRAN's
+  x86-64 SSE2 builds) and the §10 tolerance otherwise; repeated calls with
+  the same thread count are always bit-identical. Open question 10 asks
+  whether to give up contraction for thread-count independence. Other
+  thread tests: concurrent C-table callers; repeated pool
   creation and package unload; and forked children before and after pool
   creation on every POSIX CI leg.
 - **C table.** A fixture package performs FIt-SNE's 2-D convolution
@@ -1220,6 +1231,12 @@ decide whether it is worth a design.
    the migration tables and `reticulate` users expect, and document the
    faster order; decide before 0.1.0 because changing it later breaks
    callers.
+
+10. **Contraction or thread-count independence.** Fused multiply-add
+   contraction (§12.3) is worth 1–4% but lets results differ in the last
+   bit between thread counts on FMA hardware (§10). Recommended: keep it,
+   as the performance goal asks, and document it; switch it off only if a
+   consumer needs results independent of `workers`.
 
 ## 17. What this RFC does not decide
 

@@ -1,6 +1,6 @@
 # The thread pool (design §6.5).
 
-test_that("results are identical with one and several threads", {
+test_that("results agree with one and several threads", {
   withr::local_seed(71)
   m <- matrix(rnorm(512 * 256), 512)
   z <- matrix(random_complex(256 * 256), 256)
@@ -9,9 +9,9 @@ test_that("results are identical with one and several threads", {
     fft_c2c(m, axes = 1, workers = 2),
     fft_c2c(m, axes = 1, workers = 1)
   )
-  expect_identical(fft_c2c(z, workers = 2), fft_c2c(z, workers = 1))
-  expect_identical(fft_r2c(m, workers = 2), fft_r2c(m, workers = 1))
-  expect_identical(
+  expect_threads_equal(fft_c2c(z, workers = 2), fft_c2c(z, workers = 1))
+  expect_threads_equal(fft_r2c(m, workers = 2), fft_r2c(m, workers = 1))
+  expect_threads_equal(
     fft_c2r(fft_r2c(m), n = dim(m), workers = 2),
     fft_c2r(fft_r2c(m), n = dim(m), workers = 1)
   )
@@ -19,7 +19,7 @@ test_that("results are identical with one and several threads", {
     fft_dct(a, axes = c(1, 3), workers = 2),
     fft_dct(a, axes = c(1, 3), workers = 1)
   )
-  expect_identical(fft_dst(m, 4, workers = 2), fft_dst(m, 4, workers = 1))
+  expect_threads_equal(fft_dst(m, 4, workers = 2), fft_dst(m, 4, workers = 1))
 })
 
 test_that("the pool grows to the request and never beyond two cores under check", {
@@ -79,7 +79,7 @@ test_that("forked children work before and after the pool exists", {
     expect_identical(r, want)
   }
   # and the parent's pool still works after the forks
-  expect_identical(fft_c2c(m, axes = 1, workers = 2), want)
+  expect_threads_equal(fft_c2c(m, axes = 1, workers = 2), want)
 })
 
 test_that("many short threaded calls complete", {
