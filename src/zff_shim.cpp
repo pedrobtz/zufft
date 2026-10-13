@@ -97,3 +97,17 @@ extern "C" int zff_status_probe(int what) {
     return zff_status_from_exception();
   }
 }
+
+/* "off" when the instantiation units cannot contract a*b+c into a fused
+ * multiply-add (clang with zff_fp_contract.h, or a target without FMA);
+ * "fast" for GCC targeting FMA hardware, which contracts by default
+ * (design §12.3). */
+extern "C" const char *zff_fp_contract(void) {
+#if defined(__clang__)
+  return "off";
+#elif defined(__GNUC__) && (defined(__FMA__) || defined(__ARM_FEATURE_FMA) || defined(__FP_FAST_FMA))
+  return "fast";
+#else
+  return "off";
+#endif
+}

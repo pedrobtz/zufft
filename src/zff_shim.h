@@ -91,6 +91,7 @@ const char *zff_message(void);
 int zff_simd_width(void);
 const char *zff_simd_backend(void);
 int zff_fma(void);
+const char *zff_fp_contract(void);
 const char *zff_threading_mode(void);
 
 /* The thread pool (zff_pool.cpp). zff_pool_enter() takes the process-wide

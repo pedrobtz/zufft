@@ -13,7 +13,8 @@
 static SEXP zff_info(void) {
   const char *names[] = {"ducc0_commit", "scipy_commit", "simd_backend",
                          "simd_width", "fma", "threading", "pool_size",
-                         "hardware_threads", "complex_path", ""};
+                         "hardware_threads", "complex_path", "fp_contract",
+                         ""};
   SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
   SET_VECTOR_ELT(out, 0, Rf_mkString(ZFF_DUCC0_COMMIT));
   SET_VECTOR_ELT(out, 1, Rf_mkString(ZFF_SCIPY_COMMIT));
@@ -24,6 +25,7 @@ static SEXP zff_info(void) {
   SET_VECTOR_ELT(out, 6, Rf_ScalarReal((double) zff_pool_size()));
   SET_VECTOR_ELT(out, 7, Rf_ScalarReal((double) zff_hardware_threads()));
   SET_VECTOR_ELT(out, 8, Rf_mkString(zff_complex_path()));
+  SET_VECTOR_ELT(out, 9, Rf_mkString(zff_fp_contract()));
   UNPROTECT(1);
   return out;
 }

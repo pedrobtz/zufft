@@ -35,17 +35,20 @@ input is transformed as its real and imaginary parts separately.}
 
 \item{inverse}{\code{TRUE} for the inverse transform.}
 
-\item{n}{Transform lengths, one per transformed axis (no recycling).
-Each axis of \code{x} is cropped or zero-padded to its length first. \code{NULL}
-keeps the lengths of \code{x}. For \code{fft_c2r()}, \code{n} gives the lengths of the
-real output; the last transformed axis of \code{x} must then hold
-\code{n \%/\% 2 + 1} values and is cropped or padded to that. Its default is
-\code{2 * (m - 1)} for an input extent \code{m}, which is always even: give \code{n}
-to recover an odd length.}
+\item{n}{Transform lengths, one per transformed axis in the order of
+\code{axes} (no recycling); with \code{axes = NULL}, one per dimension, in
+dimension order. Each axis of \code{x} is cropped or zero-padded to its
+length first. \code{NULL} keeps the lengths of \code{x}. For \code{fft_c2r()}, \code{n}
+gives the lengths of the real output; the halved axis of \code{x} must then
+hold \code{n \%/\% 2 + 1} values and is cropped or padded to that. Its default
+is \code{2 * (m - 1)} for an input extent \code{m}, which is always even: give
+\code{n} to recover an odd length.}
 
 \item{axes}{The dimensions to transform, 1-based, without repeats. \code{NULL}
-means all of them, in order. For the real transforms the last listed
-axis is the one that is halved. Use \code{axes = 1} for a column-wise
+means all of them, in order; for \code{fft_r2c()} and \code{fft_c2r()} it means
+all of them in reverse order, so the first dimension is halved. With
+explicit \code{axes}, the real transforms halve the last axis listed, as
+SciPy does: \code{axes = seq_along(dim(x))} halves the last dimension. Use \code{axes = 1} for a column-wise
 transform of a matrix, as \code{\link[stats:mvfft]{stats::mvfft()}} does.}
 
 \item{norm}{Where the scaling goes, as in \code{\link[=fft_c2c]{fft_c2c()}}. \code{"ortho"} makes the

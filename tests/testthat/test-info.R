@@ -11,7 +11,8 @@ test_that("zufft_info() reports the vendored source and the build", {
       "threading",
       "pool_size",
       "hardware_threads",
-      "complex_path"
+      "complex_path",
+      "fp_contract"
     )
   )
   expect_match(info$ducc0_commit, "^[0-9a-f]{40}$")
@@ -22,6 +23,7 @@ test_that("zufft_info() reports the vendored source and the build", {
   expect_true(info$simd_width %in% c(1L, 2L, 4L, 8L))
   expect_type(info$fma, "logical")
   expect_true(info$threading %in% c("zufft", "none"))
+  expect_true(info$fp_contract %in% c("off", "fast"))
   expect_gte(info$pool_size, 1)
   expect_gte(info$hardware_threads, 1)
 })
