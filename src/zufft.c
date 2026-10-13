@@ -90,6 +90,13 @@ static const R_CallMethodDef call_methods[] = {
   {NULL, NULL, 0}
 };
 
+/* Joins the pool's threads before the shared object can go away
+ * (design §6.5). */
+void attribute_visible R_unload_zufft(DllInfo *dll) {
+  (void) dll;
+  zff_pool_shutdown();
+}
+
 void attribute_visible R_init_zufft(DllInfo *dll) {
   R_registerRoutines(dll, NULL, call_methods, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);

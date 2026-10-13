@@ -93,7 +93,13 @@ const char *zff_simd_backend(void);
 int zff_fma(void);
 const char *zff_threading_mode(void);
 
-/* Pool facts (zff_pool.cpp). */
+/* The thread pool (zff_pool.cpp). zff_pool_enter() takes the process-wide
+ * entry gate and grows the pool for a transform on `nthreads` threads;
+ * zff_pool_leave() releases the gate. zff_pool_shutdown() joins every
+ * worker (package unload). */
+int zff_pool_enter(int nthreads);
+void zff_pool_leave(void);
+void zff_pool_shutdown(void);
 size_t zff_pool_size(void);
 size_t zff_hardware_threads(void);
 

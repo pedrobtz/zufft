@@ -34,6 +34,8 @@
 void zff_set_message(const char *msg) noexcept;
 void zff_clear_message() noexcept;
 int zff_status_from_exception() noexcept;
+extern "C" int zff_pool_enter(int nthreads);
+extern "C" void zff_pool_leave(void);
 
 #if !defined(ZFF_COMPLEX_MARSHAL) && !(defined(__GNUC__) || defined(__clang__))
 #define ZFF_COMPLEX_MARSHAL 1
@@ -103,6 +105,19 @@ shape_t get_axes(int naxes, const int *axes, std::size_t ndim) {
 }
 
 std::size_t nthreads_of(int nthreads) { return nthreads < 1 ? 1 : std::size_t(nthreads); }
+
+/* Holds the process-wide entry gate for one top-level transform and grows
+ * the pool to `nthreads` (design §6.5, zff_pool.cpp). */
+class call_gate {
+ public:
+  explicit call_gate(int nthreads) {
+    const int st = zff_pool_enter(nthreads);
+    if (st != ZFF_OK) throw zff_error{st, nullptr};
+  }
+  ~call_gate() { zff_pool_leave(); }
+  call_gate(const call_gate &) = delete;
+  call_gate &operator=(const call_gate &) = delete;
+};
 
 /* Visits every element of a shape in column-major order with its element
  * offsets in two strided layouts (marshal path only). */
@@ -209,7 +224,7 @@ int finish_ok() {
 }
 
 int finish_error(const zff_error &e) {
-  zff_set_message(e.msg);
+  if (e.msg) zff_set_message(e.msg); /* NULL: the message is already set */
   return e.status;
 }
 
@@ -243,6 +258,7 @@ extern "C" int zff_c2c(const zff_layout *lin, const double *in,
       fail(ZFF_EINVAL, "in-place transform needs identical layouts");
     complex_in cin(in, shape, sin);
     complex_out cout(out, shape, sout);
+    call_gate gate(nthreads);
     ducc0::c2c(cin.view(), cout.view(), ax, forward != 0, fct, nthreads_of(nthreads));
     cout.finish();
     return finish_ok();
@@ -265,6 +281,7 @@ extern "C" int zff_r2c(const zff_layout *lin, const double *in,
     const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, oshape);
     const cfmav<double> vin(in, shape, sin);
     complex_out cout(out, oshape, sout);
+    call_gate gate(nthreads);
     ducc0::r2c(vin, cout.view(), ax, forward != 0, fct, nthreads_of(nthreads));
     cout.finish();
     return finish_ok();
@@ -287,6 +304,7 @@ extern "C" int zff_c2r(const zff_layout *lin, const double *in,
     const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, oshape);
     complex_in cin(in, shape, sin);
     const vfmav<double> vout(out, oshape, sout);
+    call_gate gate(nthreads);
     ducc0::c2r(cin.view(), vout, ax, forward != 0, fct, nthreads_of(nthreads));
     return finish_ok();
   } catch (const zff_error &e) {
@@ -313,6 +331,7 @@ extern "C" int zff_c2c_real(const zff_layout *lin, const double *in,
     const cfmav<double> vin(in, shape, sin);
     complex_out cout(out, shape, sout);
     const vfmav<cplx> half(cout.view().data(), half_shape(shape, ax), cout.view().stride());
+    call_gate gate(nthreads);
     ducc0::r2c(vin, half, ax, forward != 0, fct, nthreads_of(nthreads));
     zff_hermitian_fill(cout.view(), ax, nthreads_of(nthreads));
     cout.finish();
@@ -331,7 +350,7 @@ namespace {
 template <typename F>
 int zff_r2r(const zff_layout *lin, const double *in, const zff_layout *lout,
             double *out, int naxes, const int *axes, int type, bool is_dct,
-            F transform) {
+            int nthreads, F transform) {
   try {
     if (!in || !out) fail(ZFF_EINVAL, "NULL data pointer");
     if (type < 1 || type > 4) fail(ZFF_EINVAL, "transform type must be 1, 2, 3 or 4");
@@ -344,6 +363,7 @@ int zff_r2r(const zff_layout *lin, const double *in, const zff_layout *lout,
     if (is_dct && type == 1)
       for (auto a : ax)
         if (shape[a] < 2) fail(ZFF_ESHAPE, "DCT-I needs lengths of at least 2");
+    call_gate gate(nthreads);
     transform(cfmav<double>(in, shape, sin), vfmav<double>(out, shape, sout), ax);
     return finish_ok();
   } catch (const zff_error &e) {
@@ -359,7 +379,7 @@ extern "C" int zff_dct(const zff_layout *lin, const double *in,
                        const zff_layout *lout, double *out, int naxes,
                        const int *axes, int type, double fct, int ortho,
                        int nthreads) {
-  return zff_r2r(lin, in, lout, out, naxes, axes, type, true,
+  return zff_r2r(lin, in, lout, out, naxes, axes, type, true, nthreads,
                  [&](const cfmav<double> &i, const vfmav<double> &o, const shape_t &ax) {
                    ducc0::dct(i, o, ax, type, fct, ortho != 0, nthreads_of(nthreads));
                  });
@@ -369,7 +389,7 @@ extern "C" int zff_dst(const zff_layout *lin, const double *in,
                        const zff_layout *lout, double *out, int naxes,
                        const int *axes, int type, double fct, int ortho,
                        int nthreads) {
-  return zff_r2r(lin, in, lout, out, naxes, axes, type, false,
+  return zff_r2r(lin, in, lout, out, naxes, axes, type, false, nthreads,
                  [&](const cfmav<double> &i, const vfmav<double> &o, const shape_t &ax) {
                    ducc0::dst(i, o, ax, type, fct, ortho != 0, nthreads_of(nthreads));
                  });
