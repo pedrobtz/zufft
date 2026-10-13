@@ -56,6 +56,16 @@ int zff_c2c_real(const zff_layout *lin, const double *in,
                  const zff_layout *lout, double *out, int naxes,
                  const int *axes, int forward, double fct, int nthreads);
 
+/* Discrete cosine and sine transforms of type 1-4 on real buffers of equal
+ * shape. `ortho` applies SciPy's orthogonalize correction to the first and
+ * last entries. DCT-I needs every transformed length >= 2. */
+int zff_dct(const zff_layout *lin, const double *in, const zff_layout *lout,
+            double *out, int naxes, const int *axes, int type, double fct,
+            int ortho, int nthreads);
+int zff_dst(const zff_layout *lin, const double *in, const zff_layout *lout,
+            double *out, int naxes, const int *axes, int type, double fct,
+            int ortho, int nthreads);
+
 /* "zero-copy" or "marshal" (design §12.2). */
 const char *zff_complex_path(void);
 

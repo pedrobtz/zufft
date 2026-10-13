@@ -323,3 +323,54 @@ extern "C" int zff_c2c_real(const zff_layout *lin, const double *in,
     return zff_status_from_exception();
   }
 }
+
+namespace {
+
+/* DCT and DST share their checks: real buffers of equal shape, type 1-4.
+ * DCT-I is the only one that needs every length >= 2. */
+template <typename F>
+int zff_r2r(const zff_layout *lin, const double *in, const zff_layout *lout,
+            double *out, int naxes, const int *axes, int type, bool is_dct,
+            F transform) {
+  try {
+    if (!in || !out) fail(ZFF_EINVAL, "NULL data pointer");
+    if (type < 1 || type > 4) fail(ZFF_EINVAL, "transform type must be 1, 2, 3 or 4");
+    const shape_t shape = get_shape(lin);
+    if (get_shape(lout) != shape) fail(ZFF_ESHAPE, "input and output shapes differ");
+    const stride_t sin = get_stride(lin, shape), sout = get_stride(lout, shape);
+    const shape_t ax = get_axes(naxes, axes, shape.size());
+    if (in == out && sin != sout)
+      fail(ZFF_EINVAL, "in-place transform needs identical layouts");
+    if (is_dct && type == 1)
+      for (auto a : ax)
+        if (shape[a] < 2) fail(ZFF_ESHAPE, "DCT-I needs lengths of at least 2");
+    transform(cfmav<double>(in, shape, sin), vfmav<double>(out, shape, sout), ax);
+    return finish_ok();
+  } catch (const zff_error &e) {
+    return finish_error(e);
+  } catch (...) {
+    return zff_status_from_exception();
+  }
+}
+
+}  // namespace
+
+extern "C" int zff_dct(const zff_layout *lin, const double *in,
+                       const zff_layout *lout, double *out, int naxes,
+                       const int *axes, int type, double fct, int ortho,
+                       int nthreads) {
+  return zff_r2r(lin, in, lout, out, naxes, axes, type, true,
+                 [&](const cfmav<double> &i, const vfmav<double> &o, const shape_t &ax) {
+                   ducc0::dct(i, o, ax, type, fct, ortho != 0, nthreads_of(nthreads));
+                 });
+}
+
+extern "C" int zff_dst(const zff_layout *lin, const double *in,
+                       const zff_layout *lout, double *out, int naxes,
+                       const int *axes, int type, double fct, int ortho,
+                       int nthreads) {
+  return zff_r2r(lin, in, lout, out, naxes, axes, type, false,
+                 [&](const cfmav<double> &i, const vfmav<double> &o, const shape_t &ax) {
+                   ducc0::dst(i, o, ax, type, fct, ortho != 0, nthreads_of(nthreads));
+                 });
+}

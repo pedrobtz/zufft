@@ -61,6 +61,7 @@ static const R_CallMethodDef call_methods[] = {
   {"zff_scratch_c2c_call", (DL_FUNC) &zff_scratch_c2c, 2},
   {"zff_stress_call", (DL_FUNC) &zff_stress, 3},
   {"zff_fft_call", (DL_FUNC) &zff_fft, 8},
+  {"zff_r2r_call", (DL_FUNC) &zff_r2r, 9},
   {NULL, NULL, 0}
 };
 
