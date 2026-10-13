@@ -1190,8 +1190,13 @@ PKG_LIBS = -pthread
   With the variable unset, R CMD check's "compilation flags in Makevars"
   and "compilation flags used" checks both pass, because the macro expands
   to nothing (verified with R 4.6.1); a `portability` CI job builds with it
-  set on Linux, Windows and macOS, checks the flag reaches every C++
-  compile and the vector width grows on x86-64, and checks the results.
+  set on Linux and macOS, checks the flag reaches every C++ compile and
+  the vector width grows on x86-64, and checks the results. **Not on
+  Windows:** code built with `-march=native` or `-mavx2 -mfma` by Rtools'
+  MinGW-w64 GCC segfaulted on load in CI (exit 139), also with
+  `-Wa,-muse-unaligned-vector-move`, the usual workaround for GCC's
+  unaligned AVX stack spills (bug 54412). `Makevars.win` therefore has no
+  hook, and Windows builds stay portable.
   The README explains it, with the measured gain from §11. The first draft
   rejected reading an environment variable because `~/.R/Makevars` exists;
   the variable is preferred now because it is scoped to zufft.
@@ -1269,7 +1274,7 @@ decide whether it is worth a design.
 | D12 | Normalisation | SciPy's three plus `"none"`; default `"backward"` |
 | D13 | Argument order | `x, inverse, n, axes, norm, …`; `fft_c2r(x, n)` |
 | D14 | Bit-for-bit parity | withdrawn; tolerance only, so §12.3's flags are allowed |
-| D15 | Build flags | no `-f`/`-m`/`-O` flag in `Makevars` (R warns); contraction off by a clang pragma (D18); native build through the opt-in `ZUFFT_CXXFLAGS` environment variable |
+| D15 | Build flags | no `-f`/`-m`/`-O` flag in `Makevars` (R warns); contraction off by a clang pragma (D18); native build through the opt-in `ZUFFT_CXXFLAGS` environment variable (Linux and macOS; not Windows) |
 | D16 | Primary comparator | fftwtools, on §11's grid, within 1.5× |
 | D17 | Real-transform default axes | `axes = NULL` halves the first dimension (R's contiguous axis); explicit `axes` halve the last listed, as SciPy |
 | D18 | Contraction | off, so results are bit-identical whatever `workers` is; `zufft_info()$fp_contract` reports builds that still contract |

@@ -26,7 +26,7 @@ All through the R CMD check workflows of pedrobtz/r-actions, run with
   repository's tools/vendor/patches) remove a GNU macro extension that clang
   -pedantic reports and a reference bound to a null pointer that UBSan
   reports.
-* src/Makevars ends PKG_CXXFLAGS with $(ZUFFT_CXXFLAGS), an opt-in hook for
+* src/Makevars (not Makevars.win) ends PKG_CXXFLAGS with $(ZUFFT_CXXFLAGS), an opt-in hook for
   users who want a build for their own CPU (for example
   ZUFFT_CXXFLAGS=-march=native). It is empty unless a user sets it, so CRAN's
   builds use only R's own flags and $(CXX_VISIBILITY).

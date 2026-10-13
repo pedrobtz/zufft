@@ -83,9 +83,6 @@ jobs:
           - os: ubuntu-latest
             flags: -march=native
             min_width: 4
-          - os: windows-latest
-            flags: -mavx2 -mfma
-            min_width: 4
           - os: macos-latest
             flags: -mcpu=native
             min_width: 2
@@ -97,7 +94,8 @@ jobs:
         with:
           use-public-rspm: true
       # The README's opt-in native build: the flag must reach every C++
-      # compile, and the result must stay correct.
+      # compile, and the result must stay correct. Not on Windows, where
+      # Makevars.win has no hook (AVX code from Rtools' GCC crashed).
       - name: install with ZUFFT_CXXFLAGS
         shell: bash
         env:
