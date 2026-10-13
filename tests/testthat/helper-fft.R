@@ -144,3 +144,15 @@ expect_stats_equal <- function(actual, expected) {
   expect_identical(typeof(actual), typeof(expected))
   expect_fft_equal(as.vector(actual), as.vector(expected))
 }
+
+# Results with different thread counts: bit-identical on builds without
+# fused multiply-add (CRAN's x86-64 SSE2 builds); within the tolerance on
+# FMA hardware, where ducc0's SIMD batches of lines, whose boundaries depend
+# on the thread split, round differently from its scalar tail (design §10).
+expect_threads_equal <- function(actual, expected, N = length(expected)) {
+  if (isTRUE(zufft_info()$fma)) {
+    expect_fft_equal(actual, expected, N = N)
+  } else {
+    expect_identical(actual, expected)
+  }
+}

@@ -41,7 +41,9 @@ is set (as during \verb{R CMD check}). The initial value is 1, as in SciPy.
 
 Threads help when a transform has many independent lines (the columns of
 a matrix, a multi-dimensional array) and at least 32 768 elements; a
-single 1-D real transform always runs on one thread.
+single 1-D real transform always runs on one thread. Results agree to
+rounding whatever the number of threads, and are bit-identical on builds
+without fused multiply-add, such as CRAN's x86-64 binaries.
 }
 \examples{
 fft_workers()

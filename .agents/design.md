@@ -528,6 +528,31 @@ the output, not `NA_real_`. `stats::fft()` behaves the same way
 - `R_unload_zufft` takes the entry gate and joins every worker before the
   shared library can be unloaded. Calls through a cached C table after the
   provider unloads remain invalid, as with any `R_GetCCallable` API.
+- **As built (Stage 6, `src/zff_pool.cpp`).** The pool is a FIFO of tasks
+  served by `std::thread` workers waiting on one condition variable; ducc0
+  submits `nthreads - 1` tasks per parallel region and runs the rest on the
+  calling thread. Workers set ducc0's `in_parallel_region`, so nested
+  regions run serially, as in ducc0's own pool. `pthread_atfork` handlers
+  cannot be unregistered, and `devtools::load_all()` unloads and reloads
+  the shared object, so a fork after a reload would jump into unmapped
+  code. When the handlers are registered (the first threaded call), the
+  shared object therefore pins itself in memory with `dlopen(...,
+  RTLD_NODELETE)`; after an unload the handlers find no pool and do
+  nothing. The child abandons the inherited pool object, because its
+  threads do not exist and its queue lock was taken by the prepare
+  handler; it keeps the pointer in a static slot so the memory stays
+  reachable. At process exit on POSIX an `atexit` handler (registered
+  after the pinning) joins the workers; not on Windows, where a DLL's
+  `atexit` handlers run under the loader lock and joining threads there
+  deadlocked every process exit in CI; so no thread outlives the process's
+  teardown; valgrind on pedrobtz/zufft#21 flagged both, the abandoned pool
+  as "definitely lost" and running threads as "possibly lost". Forked
+  children leave by `_exit()`, which skips static destructors and exit
+  handlers, so valgrind also reports memory in them that only the parent's
+  vanished worker stacks, or ducc0's plan cache through the interior
+  pointers of its aligned buffers, refer to. Those are artefacts of the
+  fork, not leaks, and the fork test skips under valgrind (detected by its
+  `LD_PRELOAD`); the other legs, sanitizers included, run it.
 - A transform is not interruptible. Pool threads never call R.
 
 ## 7. The C table and the `LinkingTo` header
@@ -792,9 +817,20 @@ length below the minimum, or an output beyond R's vector limits),
   `"ortho"`); linearity; the shift theorem; Hermitian symmetry of
   `fft_c2c()` on real input; DCT-II and DCT-III as an inverse pair; DCT-II
   equal to an FFT of the even extension.
-- **Threads.** Results with `workers = 1` and `workers = 2` are identical
-  (expected, since ducc0 splits independent 1-D transforms; a difference
-  is reported, not hidden); concurrent C-table callers; repeated pool
+- **Threads.** Results with `workers = 1` and `workers = 2` were expected
+  to be identical, since ducc0 splits independent 1-D transforms; a
+  difference is reported, not hidden. **Reported (Stage 6):** on hardware
+  with fused multiply-add they can differ in the last bit. ducc0 runs lines
+  in SIMD batches plus a scalar tail, the batch boundaries depend on how
+  the lines are split between threads, and with contraction allowed
+  (§12.3) the vector and scalar paths round differently. With contraction
+  off every comparison was bit-identical on an arm64 Mac, at a cost of 1–4%
+  in speed (`fft_r2c()` 2048² 14.7 → 15.2 ms, `fft_c2c()` 2^20 11.7 →
+  12.2 ms). The tests assert bit-identity on builds without FMA (CRAN's
+  x86-64 SSE2 builds) and the §10 tolerance otherwise; repeated calls with
+  the same thread count are always bit-identical. Open question 10 asks
+  whether to give up contraction for thread-count independence. Other
+  thread tests: concurrent C-table callers; repeated pool
   creation and package unload; and forked children before and after pool
   creation on every POSIX CI leg.
 - **C table.** A fixture package performs FIt-SNE's 2-D convolution
@@ -859,11 +895,20 @@ few thousand points.
 | Every grid point vs fftwtools' nearest equivalent (`HermConj = 0`, `norm = "none"`) | zufft within 1.5× | met: worst 1.02× | met: worst 1.44× |
 | Column-wise and 2-D real transforms vs `mvfftw_r2c()`, `fftw_r2c_2d()` with `HermConj = 1` | zufft faster (fftwtools fills the conjugate half in R) | met: 0.46–0.68× | met: 0.54–0.83× |
 | Primes 100 003 and 1 000 003 vs fftwtools | zufft faster or within 1.2× (both are O(n log n): Bluestein vs FFTW's generic algorithms) | met: 0.69–1.02× | **missed**: complex 1 000 003 at 1.23× (100 003 at 1.11×, real 0.73–0.82×) |
-| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | Stage 6 | Stage 6 |
+| 2048 × 2048 real 2-D, `workers = 2` vs `workers = 1` | at least 1.6× | met with `axes = 2:1`: 1.82×; **missed** with the default axes: 1.49× (Stage 6) | Stage 8 |
 | `fft_r2c()` on 2^20 real vs `stats::fft()` | at least 2× | met: 6.5× | met: 8.0× |
 | `fft_c2c()` on prime 100 003 vs `stats::fft()` | at least 100× | met: 651× | met: 624× |
 
-The one miss is reported, not relaxed. It is within the 1.5× bound that
+**The axis order matters in R.** The real transforms halve the last
+listed axis, as SciPy does, but in R's column-major arrays the contiguous
+axis is the first. `fft_r2c()` of a 2048 × 2048 matrix takes 26.5 ms with
+the default axes and 14.5 ms with `axes = 2:1` on the arm64 laptop, and
+two threads speed up the first by 1.49× and the second by 1.82×. The
+semantics stay SciPy's (D10); the reference page tells users to list the
+first axis last when they want speed, and open question 9 asks whether the
+default should change.
+
+The misses are reported, not relaxed. It is within the 1.5× bound that
 governs every grid point, it is a single 1-D complex transform on a shared
 runner, and it is the case option (b) below addresses; Stage 8's full run
 re-measures it.
@@ -1189,6 +1234,21 @@ decide whether it is worth a design.
 8. **`-fno-signed-zeros -fno-trapping-math`.** Add them if Stage 1
    measures a gain? Recommended: only with a number in §12.3 and a check
    that the fixtures still pass.
+
+9. **Default axis order of the real transforms.** In R the first axis is
+   contiguous, and halving it is about 1.8 times faster than halving the
+   last (§11). Keep SciPy's "last listed axis is halved" with `axes = NULL`
+   meaning `1:k`, or make `axes = NULL` mean `k:1` for the real transforms
+   only? Recommended: keep SciPy's rule, because it is what the fixtures,
+   the migration tables and `reticulate` users expect, and document the
+   faster order; decide before 0.1.0 because changing it later breaks
+   callers.
+
+10. **Contraction or thread-count independence.** Fused multiply-add
+   contraction (§12.3) is worth 1–4% but lets results differ in the last
+   bit between thread counts on FMA hardware (§10). Recommended: keep it,
+   as the performance goal asks, and document it; switch it off only if a
+   consumer needs results independent of `workers`.
 
 ## 17. What this RFC does not decide
 

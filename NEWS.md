@@ -4,8 +4,7 @@
   and complex-to-real discrete Fourier transforms over any axes of an array,
   with SciPy's crop-or-pad `n` and `norm = "backward"`, `"ortho"`,
   `"forward"` or `"none"` (the unnormalised convention of fftwtools and
-  `stats::fft()`). `workers` is accepted; every transform runs on one thread
-  until the thread pool lands.
+  `stats::fft()`).
 * `fft_dct()` and `fft_dst()` compute discrete cosine and sine transforms of
   types 1 to 4 and their inverses over any axes, with SciPy's definitions,
   `norm` and `orthogonalize`.
@@ -14,8 +13,10 @@
   frequency and shift helpers.
 * `fft_stats()` and `mvfft_stats()` are drop-in replacements for
   `stats::fft()` and `stats::mvfft()`.
-* `fft_workers()`, `with_fft_workers()` and `local_fft_workers()` set the
-  default number of threads.
+* `workers` runs a transform on several threads, through zufft's own lazy
+  thread pool; `fft_workers()`, `with_fft_workers()` and
+  `local_fft_workers()` set the default. Results do not depend on the number
+  of threads, and forked children (`parallel::mclapply()`) are safe.
 * Bundles the BSD-licensed FFT subset of ducc0 (the files and commit SciPy
   vendors) and compiles it.
 * `zufft_info()` reports the vendored ducc0 and SciPy commits, the SIMD

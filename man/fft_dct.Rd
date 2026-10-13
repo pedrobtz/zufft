@@ -59,8 +59,11 @@ value is ignored and \code{norm == "ortho"} is used, as SciPy does.}
 \item{workers}{Threads to use. \code{NULL} uses the session default (1).
 Negative values count back from the number of available cores: \code{-1}
 means all of them. Requests are capped at the available cores, and at
-2 when \verb{_R_CHECK_LIMIT_CORES_} is set. Until the thread pool lands, every
-transform runs on one thread whatever \code{workers} says.}
+2 when \verb{_R_CHECK_LIMIT_CORES_} is set. Threads split the independent
+1-D transforms of a multi-dimensional array, so they help only arrays
+with at least 32 768 elements and more than one line. Results agree to
+rounding whatever the number of threads; they are bit-identical on
+builds without fused multiply-add (CRAN's x86-64 builds).}
 }
 \value{
 A double vector or array (complex for complex input) of the same
