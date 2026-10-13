@@ -44,5 +44,4 @@
   : Information about the zufft build
 - [`zufft`](https://pedrobtz.github.io/zufft/reference/zufft-package.md)
   [`zufft-package`](https://pedrobtz.github.io/zufft/reference/zufft-package.md)
-  : zufft: Fast Fourier, Cosine and Sine Transforms with a Bundled
-  'ducc0'
+  : zufft: Fast Fourier, Cosine and Sine Transforms

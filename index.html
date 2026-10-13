@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Fast Fourier, Cosine and Sine Transforms with a Bundled ducc0 • zufft</title>
+<title>Fast Fourier, Cosine and Sine Transforms • zufft</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Fast Fourier, Cosine and Sine Transforms with a Bundled ducc0">
-<meta name="description" content="Computes discrete Fourier transforms (complex, real-to-complex and complex-to-real) and discrete cosine and sine transforms of types one to four over any axes of an array, with the fast Fourier transform (FFT) code of ducc0 (&lt;https://github.com/mreineck/ducc&gt;) bundled in the BSD-licensed subset that SciPy uses, so that no system FFTW library is needed. Transforms of any length run in O(n log n) time, real input uses true real transforms, and several threads can share one transform. The interface follows the conventions of scipy.fft and offers the unnormalised inverse of fftwtools and stats::fft().">
-<meta property="og:description" content="Computes discrete Fourier transforms (complex, real-to-complex and complex-to-real) and discrete cosine and sine transforms of types one to four over any axes of an array, with the fast Fourier transform (FFT) code of ducc0 (&lt;https://github.com/mreineck/ducc&gt;) bundled in the BSD-licensed subset that SciPy uses, so that no system FFTW library is needed. Transforms of any length run in O(n log n) time, real input uses true real transforms, and several threads can share one transform. The interface follows the conventions of scipy.fft and offers the unnormalised inverse of fftwtools and stats::fft().">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Fast Fourier, Cosine and Sine Transforms">
+<meta name="description" content="Computes discrete Fourier transforms (complex, real-to-complex and complex-to-real) and discrete cosine and sine transforms of types one to four over any axes of an array, with the fast Fourier transform (FFT) code of ducc0 (&lt;https://github.com/mreineck/ducc&gt;) bundled in the BSD-licensed subset that SciPy uses. Transforms of any length run in O(n log n) time, real input uses true real transforms, and several threads can share one transform.">
+<meta property="og:description" content="Computes discrete Fourier transforms (complex, real-to-complex and complex-to-real) and discrete cosine and sine transforms of types one to four over any axes of an array, with the fast Fourier transform (FFT) code of ducc0 (&lt;https://github.com/mreineck/ducc&gt;) bundled in the BSD-licensed subset that SciPy uses. Transforms of any length run in O(n log n) time, real input uses true real transforms, and several threads can share one transform.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -61,20 +61,70 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>zufft provides fast Fourier transforms (FFTs) for R, along with discrete cosine and sine transforms (DCTs and DSTs). It’s designed to replace fftwtools, without the need for FFTW:</p>
-<ul>
-<li>
-<code><a href="reference/fft_c2c.html">fft_c2c()</a></code> computes the discrete Fourier transform (DFT), like <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>.</li>
-<li>
-<code><a href="reference/fft_c2c.html">fft_r2c()</a></code> computes the DFT of real input and returns only the non-negative frequency terms. <code><a href="reference/fft_c2c.html">fft_c2r()</a></code> is its inverse.</li>
-<li>
-<code><a href="reference/fft_dct.html">fft_dct()</a></code> and <code><a href="reference/fft_dct.html">fft_dst()</a></code> compute DCTs and DSTs of types 1 to 4.</li>
-<li>
-<code><a href="reference/fft_stats.html">fft_stats()</a></code> and <code><a href="reference/fft_stats.html">mvfft_stats()</a></code> are drop-in replacements for <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code> and <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::mvfft()</a></code>.</li>
-</ul>
-<p>The names will be familiar if you’ve used fftwtools. The conventions for axes, normalisation and the DCT and DST definitions follow <code>scipy.fft</code>. Helpers such as <code><a href="reference/fft_next_len.html">fft_next_len()</a></code>, <code><a href="reference/fft_freq.html">fft_freq()</a></code> and <code><a href="reference/fft_shift.html">fft_shift()</a></code> mirror SciPy’s <code>next_fast_len()</code>, <code>fftfreq()</code> and <code>fftshift()</code>.</p>
-<p>zufft bundles the BSD-licensed FFT code of <a href="https://github.com/mreineck/ducc" class="external-link">ducc0</a>, the same files and commit that SciPy uses. This means you don’t need a system FFTW library: <code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code> is all it takes, on every platform. zufft is MIT-licensed and carries no GPL code.</p>
-<p>It’s also fast. With CRAN’s build, zufft is faster than fftwtools on 30 of 33 benchmark cases, and at most 1.26 times slower on the other three. Threads help further.</p>
+<p>zufft wraps <a href="https://github.com/mreineck/ducc" class="external-link">ducc0</a>, the C++ library behind <code>scipy.fft</code>, to provide fast Fourier transforms (FFTs) and discrete cosine and sine transforms (DCTs and DSTs):</p>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr>
+<th>zufft</th>
+<th>stats</th>
+<th>fftwtools</th>
+<th>Computes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code><a href="reference/fft_c2c.html">fft_c2c()</a></code></td>
+<td>
+<code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">fft()</a></code>, <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">mvfft()</a></code>
+</td>
+<td>
+<code>fftw()</code>, <code>fftw_c2c()</code>, <code>mvfftw_c2c()</code>, <code>fftw2d()</code>, <code>fftw3d()</code>
+</td>
+<td>the discrete Fourier transform (DFT)</td>
+</tr>
+<tr>
+<td><code><a href="reference/fft_c2c.html">fft_r2c()</a></code></td>
+<td>—</td>
+<td>
+<code>fftw_r2c()</code>, <code>mvfftw_r2c()</code>, <code>fftw_r2c_2d()</code>, <code>fftw_r2c_3d()</code>, with <code>HermConj = 0</code>
+</td>
+<td>the DFT of real input, non-negative frequency terms only</td>
+</tr>
+<tr>
+<td><code><a href="reference/fft_c2c.html">fft_c2r()</a></code></td>
+<td>—</td>
+<td>
+<code>fftw_c2r()</code>, <code>mvfftw_c2r()</code>, with <code>HermConj = 0</code>
+</td>
+<td>the inverse of <code><a href="reference/fft_c2c.html">fft_r2c()</a></code>
+</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/fft_dct.html">fft_dct()</a></code>, <code><a href="reference/fft_dct.html">fft_dst()</a></code>
+</td>
+<td>—</td>
+<td>—</td>
+<td>DCTs and DSTs of types 1 to 4</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/fft_stats.html">fft_stats()</a></code>, <code><a href="reference/fft_stats.html">mvfft_stats()</a></code>
+</td>
+<td>
+<code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">fft()</a></code>, <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">mvfft()</a></code>
+</td>
+<td>—</td>
+<td>the same as <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">fft()</a></code> and <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">mvfft()</a></code>, as drop-in replacements</td>
+</tr>
+</tbody>
+</table>
+<p>One difference matters when you switch: zufft scales inverse transforms by <code>1/n</code>, as SciPy does, while stats and fftwtools don’t. Use <code>norm = "none"</code> to get their numbers. <code><a href="articles/migrating-from-fftwtools.html">vignette("migrating-from-fftwtools")</a></code> gives the exact arguments for each fftwtools function.</p>
+<p>The conventions for axes, normalisation and the DCT and DST definitions follow <code>scipy.fft</code>. Helpers such as <code><a href="reference/fft_next_len.html">fft_next_len()</a></code>, <code><a href="reference/fft_freq.html">fft_freq()</a></code> and <code><a href="reference/fft_shift.html">fft_shift()</a></code> mirror SciPy’s <code>next_fast_len()</code>, <code>fftfreq()</code> and <code>fftshift()</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -105,13 +155,13 @@
 <span><span class="co">#&gt; [1]  27+0.000000e+00i  -5+5.196152e+00i   0+4.440892e-16i -11+0.000000e+00i</span></span>
 <span><span class="fu"><a href="reference/fft_c2c.html">fft_c2r</a></span><span class="op">(</span><span class="va">X</span>, n <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1 4 2 8 5 7</span></span></code></pre></div>
-<p>Use <code>axes</code> to choose the dimensions to transform, and <code>workers</code> to spread the work over several threads. Here we transform each column of a matrix on two threads:</p>
+<p>Use <code>axes</code> to choose the dimensions to transform, and <code>workers</code> to spread the work over several threads (<code><a href="reference/fft_workers.html">fft_workers()</a></code> sets a default for the session). Here we transform each column of a matrix on two threads:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">4096</span> <span class="op">*</span> <span class="fl">64</span><span class="op">)</span>, <span class="fl">4096</span><span class="op">)</span></span>
 <span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fft_c2c.html">fft_r2c</a></span><span class="op">(</span><span class="va">m</span>, axes <span class="op">=</span> <span class="fl">1</span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">spec</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 2049   64</span></span></code></pre></div>
-<p>R stores arrays in column-major order, so the first dimension is contiguous in memory. That’s why, with <code>axes = NULL</code>, the real transforms halve the first dimension (to <code>n %/% 2 + 1</code>): it’s fast, and it matches fftwtools. If you give <code>axes</code> explicitly, the last axis listed is halved instead, as in SciPy. The results are bit-identical whatever the number of threads.</p>
+<p>R stores arrays in column-major order, so the first dimension is contiguous in memory. That’s why, with <code>axes = NULL</code>, the real transforms halve the first dimension (to <code>n %/% 2 + 1</code>): it’s fast, and it matches fftwtools. If you give <code>axes</code> explicitly, the last axis listed is halved instead, as in SciPy. With CRAN’s builds, the results are bit-identical whatever the number of threads.</p>
 <p><code><a href="reference/fft_dct.html">fft_dct()</a></code> and <code><a href="reference/fft_dct.html">fft_dst()</a></code> compute DCTs and DSTs with SciPy’s definitions. The default is type 2, and the inverse takes you back to <code>x</code>:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/fft_dct.html">fft_dct</a></span><span class="op">(</span><span class="va">x</span>, norm <span class="op">=</span> <span class="st">"ortho"</span><span class="op">)</span></span>
@@ -124,15 +174,9 @@
 <span><span class="co">#&gt; [1] 1024</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="coming-from-fftwtools-or-scipyfft">Coming from fftwtools or scipy.fft<a class="anchor" aria-label="anchor" href="#coming-from-fftwtools-or-scipyfft"></a>
-</h2>
-<p><code><a href="articles/migrating-from-fftwtools.html">vignette("migrating-from-fftwtools")</a></code> maps every fftwtools function to its zufft equivalent. The main thing to remember is scaling: zufft scales inverse transforms by <code>1/n</code>, as SciPy does. Use <code>norm = "none"</code> if you want the unscaled inverse that fftwtools and <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code> return.</p>
-<p>If you’re coming from Python, the <a href="https://pedrobtz.github.io/zufft/articles/zufft-for-scipy-users.html">scipy.fft article</a> covers the other side. The definitions match, and the test suite checks zufft against SciPy on 2040 cases.</p>
-</div>
-<div class="section level2">
 <h2 id="speed">Speed<a class="anchor" aria-label="anchor" href="#speed"></a>
 </h2>
-<p>You don’t need a native build for zufft to keep up with fftwtools. The table below compares the two on a Linux x86-64 runner, using one thread. fftwtools uses Ubuntu’s FFTW, which is built with SSE2 and AVX SIMD code. The numbers come from <code>bench/RESULTS.md</code>.</p>
+<p>You don’t need a native build for zufft to keep up with fftwtools. Here are a few cases on a Linux x86-64 runner, using one thread, against Ubuntu’s FFTW (built with SSE2 and AVX SIMD code):</p>
 <table class="table">
 <thead><tr>
 <th>Case</th>
@@ -186,35 +230,31 @@
 </tr>
 </tbody>
 </table>
-<p>A ratio below 1 means zufft is faster. With CRAN’s portable build (SSE2), zufft is faster on 30 of the 33 benchmark cases. It’s slower on three: single 1-D complex transforms of about 10^5 to 10^6 points. Unlike the columns of a matrix, a single transform can’t be split into independent 1-D transforms. The worst of these is 1.26 times slower. Built for the local CPU (AVX2 here, see <a href="#native-build">Native build</a>), zufft is faster on all 33. Each ratio compares runs on the same machine, but the two builds ran on separate runners.</p>
-<p>Where does the speed come from? Most of it comes from planning. zufft caches its plans, while fftwtools creates a new FFTW plan (with <code>FFTW_ESTIMATE</code>) and destroys it on every call. Threads add more (<code>workers = 2</code>), which fftwtools doesn’t offer. And every length runs in O(n log n), even a prime one: a prime length of 100 003 takes milliseconds, compared with seconds for <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>.</p>
-<p>On Apple silicon the gap is wider. That’s partly because Homebrew’s FFTW has no SIMD code for double precision there: FFTW’s NEON support is single precision only. You’ll find those numbers in <code>bench/RESULTS.md</code> too.</p>
+<p>A ratio below 1 means zufft is faster. On one thread, CRAN’s portable build is faster on 30 of the 33 benchmark cases. The three exceptions are single 1-D complex transforms of about 10⁵ to 10⁶ points, at worst 1.26 times slower. A <a href="#native-build">native build</a> is faster on all 33.</p>
+<p>Most of the speed comes from planning: zufft caches its plans, while fftwtools creates and destroys an FFTW plan on every call. Threads (<code>workers</code>) add more, which fftwtools doesn’t offer. And every length runs in O(n log n), even a prime one, unlike in <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>.</p>
+<p><a href="https://github.com/pedrobtz/zufft/blob/main/bench/RESULTS.md" class="external-link"><code>bench/RESULTS.md</code></a> has all 33 cases, how they were measured, and the numbers for macOS on Apple silicon.</p>
 </div>
 <div class="section level2">
 <h2 id="native-build">Native build<a class="anchor" aria-label="anchor" href="#native-build"></a>
 </h2>
-<p>CRAN’s binaries are compiled to run on any CPU of their architecture. On x86-64, that means SSE2, whose SIMD registers hold two doubles. If your CPU has AVX2 or AVX-512, a build for your own machine runs faster. It takes two steps in R:</p>
+<p>A native build is only worth it on Linux x86-64. CRAN’s binaries are compiled to run on any CPU of their architecture, and on x86-64 that means SSE2, whose SIMD registers hold two doubles. If your CPU has AVX2 or AVX-512, a build for your own machine runs faster. It takes two steps in R:</p>
 <ol style="list-style-type: decimal">
 <li><p>Set the environment variable <code>ZUFFT_CXXFLAGS</code> with <code><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv()</a></code>. zufft adds it to its compiler flags, and no other package sees it.</p></li>
-<li><p>Install from source with <code>install.packages(..., type = "source")</code>. A prebuilt binary, which is what you get by default on macOS, is already compiled and ignores the variable.</p></li>
+<li><p>Install from source with <code>install.packages("zufft", type = "source")</code>. A prebuilt binary is already compiled and ignores the variable.</p></li>
 </ol>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>ZUFFT_CXXFLAGS <span class="op">=</span> <span class="st">"-march=native"</span><span class="op">)</span> <span class="co"># "-mcpu=native" on Apple silicon</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>ZUFFT_CXXFLAGS <span class="op">=</span> <span class="st">"-march=native"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"zufft"</span>, type <span class="op">=</span> <span class="st">"source"</span><span class="op">)</span></span></code></pre></div>
-<p>If you want the development version, clear pak’s cache first. Otherwise pak reuses a cached build of the same commit, which ignores the variable:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/cache.html" class="external-link">cache_delete</a></span><span class="op">(</span>package <span class="op">=</span> <span class="st">"zufft"</span><span class="op">)</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pedrobtz/zufft"</span><span class="op">)</span></span></code></pre></div>
 <p>You can check the result with <code><a href="reference/zufft_info.html">zufft_info()</a></code>. The SIMD width, in doubles, is 4 with AVX2, 8 with AVX-512, and 2 for a portable build:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">zufft</span><span class="fu">::</span><span class="fu"><a href="reference/zufft_info.html">zufft_info</a></span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">simd_width</span></span></code></pre></div>
-<p>This works on Linux and macOS. Installing from source needs a compiler (on macOS, the Xcode command line tools). Windows builds ignore <code>ZUFFT_CXXFLAGS</code> and stay portable, because code built for AVX by the GCC in Rtools crashed in our tests.</p>
-<p>How much does it help? On the Linux x86-64 runner of <code>bench/RESULTS.md</code>, where this gives AVX2, the 16384 × 64 complex column case drops from 15.39 ms to 9.17 ms. A complex transform of prime length 10 007 drops from 659.6 µs to 389.5 µs. On Apple silicon the SIMD width stays at two doubles (NEON), so a native build (<code>-mcpu=native</code> there) gains little.</p>
-<p>There are two things to keep in mind:</p>
+<p>How much does it help? On the Linux x86-64 runners of <code>bench/RESULTS.md</code>, where this gives AVX2, the 16384 × 64 complex column case goes from 0.96 to 0.60 of fftwtools’ time. A complex transform of prime length 10 007 goes from 0.81 to 0.49.</p>
+<p>Other platforms gain little or nothing:</p>
 <ul>
-<li><p>The package then runs only on CPUs like yours, so don’t copy the installed library to other machines.</p></li>
-<li><p>With GCC on a CPU with fused multiply-add (FMA), results can differ in the last bit between thread counts. <code>zufft::zufft_info()$fp_contract</code> reports <code>"fast"</code> when that applies. CRAN’s builds report <code>"off"</code>.</p></li>
+<li><p>On Apple silicon the SIMD width stays at two doubles (NEON), so a native build gains little.</p></li>
+<li><p>Windows builds ignore <code>ZUFFT_CXXFLAGS</code> and stay portable, because code built for AVX by the GCC in Rtools crashed in our tests.</p></li>
 </ul>
+<p>Keep in mind that a native build with GCC, on a CPU with fused multiply-add (FMA), can give results that differ in the last bit between thread counts. <code>zufft::zufft_info()$fp_contract</code> reports <code>"fast"</code> when that applies. CRAN’s builds report <code>"off"</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="licence">Licence<a class="anchor" aria-label="anchor" href="#licence"></a>

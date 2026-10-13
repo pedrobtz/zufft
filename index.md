@@ -2,48 +2,31 @@
 
 ## Overview
 
-zufft provides fast Fourier transforms (FFTs) for R, along with discrete
-cosine and sine transforms (DCTs and DSTs). It’s designed to replace
-fftwtools, without the need for FFTW:
+zufft wraps [ducc0](https://github.com/mreineck/ducc), the C++ library
+behind `scipy.fft`, to provide fast Fourier transforms (FFTs) and
+discrete cosine and sine transforms (DCTs and DSTs):
 
-- [`fft_c2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
-  computes the discrete Fourier transform (DFT), like
-  [`stats::fft()`](https://rdrr.io/r/stats/fft.html).
-- [`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
-  computes the DFT of real input and returns only the non-negative
-  frequency terms.
-  [`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md)
-  is its inverse.
-- [`fft_dct()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md)
-  and
-  [`fft_dst()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md)
-  compute DCTs and DSTs of types 1 to 4.
-- [`fft_stats()`](https://pedrobtz.github.io/zufft/reference/fft_stats.md)
-  and
-  [`mvfft_stats()`](https://pedrobtz.github.io/zufft/reference/fft_stats.md)
-  are drop-in replacements for
-  [`stats::fft()`](https://rdrr.io/r/stats/fft.html) and
-  [`stats::mvfft()`](https://rdrr.io/r/stats/fft.html).
+| zufft | stats | fftwtools | Computes |
+|----|----|----|----|
+| [`fft_c2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md) | [`fft()`](https://rdrr.io/r/stats/fft.html), [`mvfft()`](https://rdrr.io/r/stats/fft.html) | `fftw()`, `fftw_c2c()`, `mvfftw_c2c()`, `fftw2d()`, `fftw3d()` | the discrete Fourier transform (DFT) |
+| [`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md) | — | `fftw_r2c()`, `mvfftw_r2c()`, `fftw_r2c_2d()`, `fftw_r2c_3d()`, with `HermConj = 0` | the DFT of real input, non-negative frequency terms only |
+| [`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md) | — | `fftw_c2r()`, `mvfftw_c2r()`, with `HermConj = 0` | the inverse of [`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md) |
+| [`fft_dct()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md), [`fft_dst()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md) | — | — | DCTs and DSTs of types 1 to 4 |
+| [`fft_stats()`](https://pedrobtz.github.io/zufft/reference/fft_stats.md), [`mvfft_stats()`](https://pedrobtz.github.io/zufft/reference/fft_stats.md) | [`fft()`](https://rdrr.io/r/stats/fft.html), [`mvfft()`](https://rdrr.io/r/stats/fft.html) | — | the same as [`fft()`](https://rdrr.io/r/stats/fft.html) and [`mvfft()`](https://rdrr.io/r/stats/fft.html), as drop-in replacements |
 
-The names will be familiar if you’ve used fftwtools. The conventions for
-axes, normalisation and the DCT and DST definitions follow `scipy.fft`.
-Helpers such as
+One difference matters when you switch: zufft scales inverse transforms
+by `1/n`, as SciPy does, while stats and fftwtools don’t. Use
+`norm = "none"` to get their numbers.
+[`vignette("migrating-from-fftwtools")`](https://pedrobtz.github.io/zufft/articles/migrating-from-fftwtools.md)
+gives the exact arguments for each fftwtools function.
+
+The conventions for axes, normalisation and the DCT and DST definitions
+follow `scipy.fft`. Helpers such as
 [`fft_next_len()`](https://pedrobtz.github.io/zufft/reference/fft_next_len.md),
 [`fft_freq()`](https://pedrobtz.github.io/zufft/reference/fft_freq.md)
 and
 [`fft_shift()`](https://pedrobtz.github.io/zufft/reference/fft_shift.md)
 mirror SciPy’s `next_fast_len()`, `fftfreq()` and `fftshift()`.
-
-zufft bundles the BSD-licensed FFT code of
-[ducc0](https://github.com/mreineck/ducc), the same files and commit
-that SciPy uses. This means you don’t need a system FFTW library:
-[`install.packages()`](https://rdrr.io/r/utils/install.packages.html) is
-all it takes, on every platform. zufft is MIT-licensed and carries no
-GPL code.
-
-It’s also fast. With CRAN’s build, zufft is faster than fftwtools on 30
-of 33 benchmark cases, and at most 1.26 times slower on the other three.
-Threads help further.
 
 ## Installation
 
@@ -96,7 +79,9 @@ fft_c2r(X, n = length(x))
 ```
 
 Use `axes` to choose the dimensions to transform, and `workers` to
-spread the work over several threads. Here we transform each column of a
+spread the work over several threads
+([`fft_workers()`](https://pedrobtz.github.io/zufft/reference/fft_workers.md)
+sets a default for the session). Here we transform each column of a
 matrix on two threads:
 
 ``` r
@@ -111,8 +96,8 @@ R stores arrays in column-major order, so the first dimension is
 contiguous in memory. That’s why, with `axes = NULL`, the real
 transforms halve the first dimension (to `n %/% 2 + 1`): it’s fast, and
 it matches fftwtools. If you give `axes` explicitly, the last axis
-listed is halved instead, as in SciPy. The results are bit-identical
-whatever the number of threads.
+listed is halved instead, as in SciPy. With CRAN’s builds, the results
+are bit-identical whatever the number of threads.
 
 [`fft_dct()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md) and
 [`fft_dst()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md)
@@ -138,25 +123,11 @@ fft_next_len(1009)
 #> [1] 1024
 ```
 
-## Coming from fftwtools or scipy.fft
-
-[`vignette("migrating-from-fftwtools")`](https://pedrobtz.github.io/zufft/articles/migrating-from-fftwtools.md)
-maps every fftwtools function to its zufft equivalent. The main thing to
-remember is scaling: zufft scales inverse transforms by `1/n`, as SciPy
-does. Use `norm = "none"` if you want the unscaled inverse that
-fftwtools and [`stats::fft()`](https://rdrr.io/r/stats/fft.html) return.
-
-If you’re coming from Python, the [scipy.fft
-article](https://pedrobtz.github.io/zufft/articles/zufft-for-scipy-users.html)
-covers the other side. The definitions match, and the test suite checks
-zufft against SciPy on 2040 cases.
-
 ## Speed
 
-You don’t need a native build for zufft to keep up with fftwtools. The
-table below compares the two on a Linux x86-64 runner, using one thread.
-fftwtools uses Ubuntu’s FFTW, which is built with SSE2 and AVX SIMD
-code. The numbers come from `bench/RESULTS.md`.
+You don’t need a native build for zufft to keep up with fftwtools. Here
+are a few cases on a Linux x86-64 runner, using one thread, against
+Ubuntu’s FFTW (built with SSE2 and AVX SIMD code):
 
 | Case | fftwtools | zufft, CRAN build | ratio | zufft native, ratio |
 |----|----|----|----|----|
@@ -167,57 +138,41 @@ code. The numbers come from `bench/RESULTS.md`.
 | 3-D complex 128³ | 44.80 ms | 34.10 ms | 0.76 | 0.83 |
 | 1-D complex 100 000 | 1.44 ms | 1.81 ms | 1.26 | 0.83 |
 
-A ratio below 1 means zufft is faster. With CRAN’s portable build
-(SSE2), zufft is faster on 30 of the 33 benchmark cases. It’s slower on
-three: single 1-D complex transforms of about 10^5 to 10^6 points.
-Unlike the columns of a matrix, a single transform can’t be split into
-independent 1-D transforms. The worst of these is 1.26 times slower.
-Built for the local CPU (AVX2 here, see [Native build](#native-build)),
-zufft is faster on all 33. Each ratio compares runs on the same machine,
-but the two builds ran on separate runners.
+A ratio below 1 means zufft is faster. On one thread, CRAN’s portable
+build is faster on 30 of the 33 benchmark cases. The three exceptions
+are single 1-D complex transforms of about 10⁵ to 10⁶ points, at worst
+1.26 times slower. A [native build](#native-build) is faster on all 33.
 
-Where does the speed come from? Most of it comes from planning. zufft
-caches its plans, while fftwtools creates a new FFTW plan (with
-`FFTW_ESTIMATE`) and destroys it on every call. Threads add more
-(`workers = 2`), which fftwtools doesn’t offer. And every length runs in
-O(n log n), even a prime one: a prime length of 100 003 takes
-milliseconds, compared with seconds for
+Most of the speed comes from planning: zufft caches its plans, while
+fftwtools creates and destroys an FFTW plan on every call. Threads
+(`workers`) add more, which fftwtools doesn’t offer. And every length
+runs in O(n log n), even a prime one, unlike in
 [`stats::fft()`](https://rdrr.io/r/stats/fft.html).
 
-On Apple silicon the gap is wider. That’s partly because Homebrew’s FFTW
-has no SIMD code for double precision there: FFTW’s NEON support is
-single precision only. You’ll find those numbers in `bench/RESULTS.md`
-too.
+[`bench/RESULTS.md`](https://github.com/pedrobtz/zufft/blob/main/bench/RESULTS.md)
+has all 33 cases, how they were measured, and the numbers for macOS on
+Apple silicon.
 
 ## Native build
 
-CRAN’s binaries are compiled to run on any CPU of their architecture. On
-x86-64, that means SSE2, whose SIMD registers hold two doubles. If your
-CPU has AVX2 or AVX-512, a build for your own machine runs faster. It
-takes two steps in R:
+A native build is only worth it on Linux x86-64. CRAN’s binaries are
+compiled to run on any CPU of their architecture, and on x86-64 that
+means SSE2, whose SIMD registers hold two doubles. If your CPU has AVX2
+or AVX-512, a build for your own machine runs faster. It takes two steps
+in R:
 
 1.  Set the environment variable `ZUFFT_CXXFLAGS` with
     [`Sys.setenv()`](https://rdrr.io/r/base/Sys.setenv.html). zufft adds
     it to its compiler flags, and no other package sees it.
 
-2.  Install from source with `install.packages(..., type = "source")`. A
-    prebuilt binary, which is what you get by default on macOS, is
+2.  Install from source with
+    `install.packages("zufft", type = "source")`. A prebuilt binary is
     already compiled and ignores the variable.
 
 ``` r
 
-Sys.setenv(ZUFFT_CXXFLAGS = "-march=native") # "-mcpu=native" on Apple silicon
+Sys.setenv(ZUFFT_CXXFLAGS = "-march=native")
 install.packages("zufft", type = "source")
-```
-
-If you want the development version, clear pak’s cache first. Otherwise
-pak reuses a cached build of the same commit, which ignores the
-variable:
-
-``` r
-
-pak::cache_delete(package = "zufft")
-pak::pak("pedrobtz/zufft")
 ```
 
 You can check the result with
@@ -230,25 +185,23 @@ portable build:
 zufft::zufft_info()$simd_width
 ```
 
-This works on Linux and macOS. Installing from source needs a compiler
-(on macOS, the Xcode command line tools). Windows builds ignore
-`ZUFFT_CXXFLAGS` and stay portable, because code built for AVX by the
-GCC in Rtools crashed in our tests.
+How much does it help? On the Linux x86-64 runners of
+`bench/RESULTS.md`, where this gives AVX2, the 16384 × 64 complex column
+case goes from 0.96 to 0.60 of fftwtools’ time. A complex transform of
+prime length 10 007 goes from 0.81 to 0.49.
 
-How much does it help? On the Linux x86-64 runner of `bench/RESULTS.md`,
-where this gives AVX2, the 16384 × 64 complex column case drops from
-15.39 ms to 9.17 ms. A complex transform of prime length 10 007 drops
-from 659.6 µs to 389.5 µs. On Apple silicon the SIMD width stays at two
-doubles (NEON), so a native build (`-mcpu=native` there) gains little.
+Other platforms gain little or nothing:
 
-There are two things to keep in mind:
+- On Apple silicon the SIMD width stays at two doubles (NEON), so a
+  native build gains little.
 
-- The package then runs only on CPUs like yours, so don’t copy the
-  installed library to other machines.
+- Windows builds ignore `ZUFFT_CXXFLAGS` and stay portable, because code
+  built for AVX by the GCC in Rtools crashed in our tests.
 
-- With GCC on a CPU with fused multiply-add (FMA), results can differ in
-  the last bit between thread counts. `zufft::zufft_info()$fp_contract`
-  reports `"fast"` when that applies. CRAN’s builds report `"off"`.
+Keep in mind that a native build with GCC, on a CPU with fused
+multiply-add (FMA), can give results that differ in the last bit between
+thread counts. `zufft::zufft_info()$fp_contract` reports `"fast"` when
+that applies. CRAN’s builds report `"off"`.
 
 ## Licence
 
