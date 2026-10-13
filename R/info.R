@@ -18,7 +18,8 @@
 #'     \item{`pool_size`}{Threads the pool can use now, the caller
 #'       included.}
 #'     \item{`hardware_threads`}{Threads the hardware offers.}
-#'     \item{`complex_path`}{How complex vectors reach ducc0.}
+#'     \item{`complex_path`}{`"zero-copy"` when complex vectors are
+#'       viewed in place, `"marshal"` when they are copied (design §12.2).}
 #'   }
 #' @export
 #' @examples

@@ -21,14 +21,44 @@ static SEXP zff_info(void) {
   SET_VECTOR_ELT(out, 5, Rf_mkString(zff_threading_mode()));
   SET_VECTOR_ELT(out, 6, Rf_ScalarReal((double) zff_pool_size()));
   SET_VECTOR_ELT(out, 7, Rf_ScalarReal((double) zff_hardware_threads()));
-  /* Decided in Stage 2 (design §12.2). */
-  SET_VECTOR_ELT(out, 8, Rf_mkString("undecided"));
+  SET_VECTOR_ELT(out, 8, Rf_mkString(zff_complex_path()));
   UNPROTECT(1);
   return out;
 }
 
+/* Stage 2 spikes (design §12.1, §12.2): internal entry points, not API. */
+
+/* A dense column-major complex-to-complex transform of a plain complex
+ * vector, unnormalised, through the shim. Exercises the complex path. */
+static SEXP zff_scratch_c2c(SEXP z, SEXP forward) {
+  if (TYPEOF(z) != CPLXSXP) Rf_error("internal: complex vector expected");
+  R_xlen_t n = XLENGTH(z);
+  SEXP out = PROTECT(Rf_allocVector(CPLXSXP, n));
+  if (n > 0) {
+    size_t shape = (size_t) n;
+    zff_layout l = {1, &shape, NULL};
+    int axis = 0;
+    int st = zff_c2c(&l, (const double *) COMPLEX(z), &l, (double *) COMPLEX(out),
+                     1, &axis, Rf_asLogical(forward), 1.0, 1);
+    if (st != ZFF_OK) Rf_error("zufft engine error %d: %s", st, zff_message());
+  }
+  UNPROTECT(1);
+  return out;
+}
+
+/* The Windows go/no-go stress loop; returns the checksum. */
+static SEXP zff_stress(SEXP nthreads, SEXP pools, SEXP regions) {
+  double checksum = 0;
+  int st = zff_thread_stress(Rf_asInteger(nthreads), Rf_asInteger(pools),
+                             Rf_asInteger(regions), &checksum);
+  if (st != ZFF_OK) Rf_error("zufft thread stress failed (%d): %s", st, zff_message());
+  return Rf_ScalarReal(checksum);
+}
+
 static const R_CallMethodDef call_methods[] = {
   {"zff_info", (DL_FUNC) &zff_info, 0},
+  {"zff_scratch_c2c_call", (DL_FUNC) &zff_scratch_c2c, 2},
+  {"zff_stress_call", (DL_FUNC) &zff_stress, 3},
   {NULL, NULL, 0}
 };
 

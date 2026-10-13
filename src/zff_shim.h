@@ -6,6 +6,7 @@
 #define ZFF_SHIM_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +23,27 @@ enum {
   ZFF_EENGINE = 6,
   ZFF_EINTERNAL = 7
 };
+
+/* A strided array view. Shapes are extents; strides are in elements (one
+ * double for real buffers, one (re, im) pair for complex ones); a NULL
+ * stride means dense column-major. Mirrors zufft_layout in zufft.h. */
+typedef struct {
+  int ndim;
+  const size_t *shape;
+  const ptrdiff_t *stride;
+} zff_layout;
+
+/* Complex-to-complex transform over `axes` (0-based). Complex buffers are
+ * (re, im) pairs. in == out with identical layouts runs in place. */
+int zff_c2c(const zff_layout *lin, const double *in, const zff_layout *lout,
+            double *out, int naxes, const int *axes, int forward, double fct,
+            int nthreads);
+
+/* "zero-copy" or "marshal" (design §12.2). */
+const char *zff_complex_path(void);
+
+/* Windows go/no-go stress test (design §12.1); zff_stress.cpp. */
+int zff_thread_stress(int nthreads, int pools, int regions, double *checksum);
 
 /* This thread's last failure message; empty after a successful call. */
 const char *zff_message(void);

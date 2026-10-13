@@ -31,7 +31,8 @@ BugReports: https://github.com/pedrobtz/zufft/issues
 Depends: 
     R (>= 4.1)
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr
 Config/roxygen2/version: 8.1.0
 Config/testthat/edition: 3
 Copyright: See inst/COPYRIGHTS.

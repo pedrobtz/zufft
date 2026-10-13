@@ -20,7 +20,8 @@ A named list:
 \item{\code{pool_size}}{Threads the pool can use now, the caller
 included.}
 \item{\code{hardware_threads}}{Threads the hardware offers.}
-\item{\code{complex_path}}{How complex vectors reach ducc0.}
+\item{\code{complex_path}}{\code{"zero-copy"} when complex vectors are
+viewed in place, \code{"marshal"} when they are copied (design §12.2).}
 }
 }
 \description{
