@@ -1144,8 +1144,9 @@ CXX_STD = CXX17
 # std::thread needs it (WRE §1.2.1 allows it in PKG_CPPFLAGS).
 PKG_CPPFLAGS = -I. -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
 
-# Hidden symbols, the way R's own Makeconf spells them.
-PKG_CXXFLAGS = $(CXX_VISIBILITY)
+# Hidden symbols, the way R's own Makeconf spells them; ZUFFT_CXXFLAGS is
+# the opt-in native-build hook, empty unless the user sets it.
+PKG_CXXFLAGS = $(CXX_VISIBILITY) $(ZUFFT_CXXFLAGS)
 PKG_CFLAGS = $(C_VISIBILITY)
 PKG_LIBS = -pthread
 ```
@@ -1181,12 +1182,19 @@ PKG_LIBS = -pthread
   them with a benchmark number in this section). `-O3` (overridden by R,
   reserved to the user). `-march=native` (CRAN NOTE; a binary built on
   the CRAN farm must run on every user's CPU).
-- **Opt-in native build.** A user who wants wider vectors adds
-  `CXX17FLAGS += -march=native` (or `-mavx2 -mfma`) to `~/.R/Makevars`
-  and reinstalls from source; `zufft_info()` then reports the width.
-  `Makevars` does not read an environment variable for this: the standard
-  route exists and keeps CRAN's flag scan clean. The README documents it
-  with the measured gain from §11.
+- **Opt-in native build (revised after 0.1.0 readiness).** `PKG_CXXFLAGS`
+  ends with `$(ZUFFT_CXXFLAGS)`, which `make` reads from the environment
+  and which is empty unless the user sets it: `Sys.setenv(ZUFFT_CXXFLAGS =
+  "-march=native")` before `install.packages("zufft", type = "source")`.
+  It reaches only zufft, unlike `~/.R/Makevars`, and needs no `configure`.
+  With the variable unset, R CMD check's "compilation flags in Makevars"
+  and "compilation flags used" checks both pass, because the macro expands
+  to nothing (verified with R 4.6.1); a `portability` CI job builds with it
+  set on Linux, Windows and macOS, checks the flag reaches every C++
+  compile and the vector width grows on x86-64, and checks the results.
+  The README explains it, with the measured gain from §11. The first draft
+  rejected reading an environment variable because `~/.R/Makevars` exists;
+  the variable is preferred now because it is scoped to zufft.
 - **`Makevars.win`** is the same file plus whatever §12.1 decides
   (`-DDUCC0_NO_LOWLEVEL_THREADING` if the go/no-go had failed; it did
   not, so the two files are identical). `-pthread` builds without a
@@ -1261,7 +1269,7 @@ decide whether it is worth a design.
 | D12 | Normalisation | SciPy's three plus `"none"`; default `"backward"` |
 | D13 | Argument order | `x, inverse, n, axes, norm, …`; `fft_c2r(x, n)` |
 | D14 | Bit-for-bit parity | withdrawn; tolerance only, so §12.3's flags are allowed |
-| D15 | Build flags | no `-f`/`-m`/`-O` flag in `Makevars` (R warns); FMA contraction by GCC's default and a clang pragma; native build is the user's `~/.R/Makevars` |
+| D15 | Build flags | no `-f`/`-m`/`-O` flag in `Makevars` (R warns); contraction off by a clang pragma (D18); native build through the opt-in `ZUFFT_CXXFLAGS` environment variable |
 | D16 | Primary comparator | fftwtools, on §11's grid, within 1.5× |
 | D17 | Real-transform default axes | `axes = NULL` halves the first dimension (R's contiguous axis); explicit `axes` halve the last listed, as SciPy |
 | D18 | Contraction | off, so results are bit-identical whatever `workers` is; `zufft_info()$fp_contract` reports builds that still contract |
