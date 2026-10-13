@@ -6,6 +6,8 @@
 #include <cstring>
 #include <exception>
 #include <new>
+#include <stdexcept>
+#include <system_error>
 
 #include "ducc0/infra/simd.h"
 #include "zff_shim.h"
@@ -32,6 +34,9 @@ int zff_status_from_exception() noexcept {
   } catch (const std::bad_alloc &) {
     zff_set_message("out of memory");
     return ZFF_ENOMEM;
+  } catch (const std::system_error &e) {
+    zff_set_message(e.what());
+    return ZFF_ETHREAD;
   } catch (const std::exception &e) {
     zff_set_message(e.what());
     return ZFF_EENGINE;
@@ -75,4 +80,20 @@ extern "C" const char *zff_threading_mode(void) {
 #else
   return "ducc0";
 #endif
+}
+
+/* Test hook: maps a thrown exception of each kind to its status, so every
+ * zufft_status value can be produced by a test (design §10). */
+extern "C" int zff_status_probe(int what) {
+  try {
+    switch (what) {
+      case 4: throw std::bad_alloc();
+      case 5: throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
+      case 6: throw std::runtime_error("engine failure (probe)");
+      case 7: throw 42;
+      default: zff_clear_message(); return ZFF_OK;
+    }
+  } catch (...) {
+    return zff_status_from_exception();
+  }
 }

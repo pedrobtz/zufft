@@ -4,10 +4,11 @@
 # source instead (zff_fp_contract.h).
 CXX_STD = CXX17
 
-# -I. finds the vendored ducc0/ tree and the custom threading header;
+# -I. finds the vendored ducc0/ tree and the custom threading header,
+# -I../inst/include the public header the C table implements;
 # custom threading lets zufft own the thread pool (design §6.5); -pthread
 # where std::thread needs it (WRE §1.2.1 allows it in PKG_CPPFLAGS).
-PKG_CPPFLAGS = -I. -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
+PKG_CPPFLAGS = -I. -I../inst/include -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread
 
 # Hidden symbols, the way R's own Makeconf spells them.
 PKG_CXXFLAGS = $(CXX_VISIBILITY)

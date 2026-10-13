@@ -1,0 +1,30 @@
+# Coverage-guided fuzzing of the C table's layout handling (design §7,
+# §10): tools/fuzz/fuzz_layout.cpp drives every member with arbitrary
+# shapes, strides, axes and types, under ASan and UBSan, without R.
+on:
+  pull_request:
+    paths-ignore: ['**.md', '.agents/**', '_pkgdown.yml', 'docs/**']
+  schedule:
+    # A long run weekly; the corpus cache joins it to the short PR runs.
+    - cron: "0 4 * * 1"
+
+name: fuzz
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    uses: pedrobtz/r-actions/.github/workflows/fuzz.yml@v1
+    with:
+      harness: tools/fuzz/fuzz_layout.cpp
+      sources: src/zff_*.cpp
+      exclude-sources: |
+        src/zff_stress.cpp
+      # The workflow links with the clang C driver, which leaves out UBSan's
+      # C++ runtime (the vptr check needs it): -fsanitize-link-c++-runtime
+      # adds it back. -fno-sanitize=vptr would not stick, because the
+      # workflow's -fsanitize=...,undefined comes after these flags.
+      cflags: -g -O1 -fno-omit-frame-pointer -fsanitize-link-c++-runtime -std=c++17 -Isrc -Iinst/include -DDUCC0_CUSTOM_LOWLEVEL_THREADING -pthread -lstdc++ -lm
+      max-total-time: ${{ github.event_name == 'schedule' && 1800 || 120 }}

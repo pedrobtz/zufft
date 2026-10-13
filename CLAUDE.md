@@ -20,9 +20,9 @@ criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 6. The whole R surface of design §5.1 exists
-and `workers` runs on zufft's own thread pool (`src/zff_pool.cpp`), with
-fork and unload handling. The C table (Stage 7) is next.
+Verified 2026-10-13: Stage 7. The R surface of design §5.1 and the C table
+of §7 (`inst/include/zufft.h`, `src/zff_api.cpp`) exist; `workers` runs on
+zufft's own pool. Stage 8 adds SciPy fixtures and the full benchmark run.
 Benchmarks against fftwtools are in `bench/RESULTS.md`.
 
 ## Stage tracking
@@ -137,6 +137,9 @@ entry.
 - **Never unregister or bypass the fork handlers.** `zff_pool.cpp` pins the
   shared object with `RTLD_NODELETE` because `pthread_atfork` handlers
   outlive an unload (`devtools::load_all()` reloads).
+- **`inst/include/zufft.h` is a public ABI.** Append members only, keep the
+  status values, and keep it compiling standalone as C99 and C++17
+  (`tools/check-header`); `zutsne` will depend on it before 0.1.0.
 - **Nothing in the shim or on a pool thread calls R.** Errors cross as a
   status code and a thread-local message; `zff_raise()` in the C glue turns
   them into classed R conditions.

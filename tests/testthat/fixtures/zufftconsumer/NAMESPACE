@@ -1,0 +1,3 @@
+useDynLib(zufftconsumer, .registration = TRUE)
+importFrom(zufft, zufft_info)
+export(conv2d, inplace_pair, contract, concurrent, api_size)

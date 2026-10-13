@@ -663,6 +663,16 @@ static inline const zufft_api *zufft_api_get(void);
 - The table follows `zuxml`'s versioning rules: members are appended,
   `struct_size` lets a consumer check that a member exists, and a layout
   change bumps the registered name to `zufft_api_v2`.
+- **As built (Stage 7).** `src/zff_api.cpp` holds the table; each member
+  converts the layout, resolves `nthreads` (0 is the session's
+  `fft_workers()`, mirrored in an atomic; negative counts back from the
+  cores; capped at the cores and at 2 under `_R_CHECK_LIMIT_CORES_`) and
+  calls the shim function the R glue uses. The shim rejects a writable
+  layout that reaches an element twice, input and output byte ranges that
+  overlap (except an identical in-place `c2c`, `dct` or `dst`), and any
+  view whose last byte is not addressable with `ptrdiff_t`. Defining
+  `ZUFFT_NO_R` before including `zufft.h` leaves out `zufft_api_get()` and
+  R's headers, for code built without R (zufft's fuzz target).
 
 ## 8. The vendored library and its licence
 
@@ -850,8 +860,11 @@ length below the minimum, or an output beyond R's vector limits),
 - **Build flags.** A CI leg runs `R CMD check --as-cran` and fails on the
   "non-portable flag(s)" NOTE (§12.3), so that no flag can be added to
   `Makevars` without a design change.
-- `zufuzz` targets for shapes, strides and axes through the C table. CRAN
-  suite under 15 s.
+- A libFuzzer target (`tools/fuzz/fuzz_layout.cpp`, run by r-actions'
+  `fuzz.yml` under ASan and UBSan) for shapes, strides, axes and types
+  through the C table. The first draft named `zufuzz` targets; zufuzz is
+  still an empty skeleton, so Stage 7 used the r-actions harness instead.
+  CRAN suite under 15 s.
 
 ## 11. Performance targets
 

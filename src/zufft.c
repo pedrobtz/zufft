@@ -5,6 +5,7 @@
 #include <R_ext/Visibility.h>
 
 #include "zff_r.h"
+#include "zufft.h"
 #include "zff_shim.h"
 #include "zff_version.h"
 
@@ -79,6 +80,15 @@ static SEXP zff_set_workers(SEXP n) {
   return R_NilValue;
 }
 
+const zufft_api *zff_api_v1(void);
+int zff_status_probe(int what);
+
+/* Test hook: the status each kind of failure maps to (design §10). */
+static SEXP zff_probe(SEXP what) {
+  int st = zff_status_probe(Rf_asInteger(what));
+  return Rf_ScalarInteger(st);
+}
+
 static const R_CallMethodDef call_methods[] = {
   {"zff_info", (DL_FUNC) &zff_info, 0},
   {"zff_scratch_c2c_call", (DL_FUNC) &zff_scratch_c2c, 2},
@@ -87,6 +97,7 @@ static const R_CallMethodDef call_methods[] = {
   {"zff_r2r_call", (DL_FUNC) &zff_r2r, 9},
   {"zff_lengths_call", (DL_FUNC) &zff_lengths, 3},
   {"zff_set_workers_call", (DL_FUNC) &zff_set_workers, 1},
+  {"zff_probe_call", (DL_FUNC) &zff_probe, 1},
   {NULL, NULL, 0}
 };
 
@@ -100,5 +111,7 @@ void attribute_visible R_unload_zufft(DllInfo *dll) {
 void attribute_visible R_init_zufft(DllInfo *dll) {
   R_registerRoutines(dll, NULL, call_methods, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
+  /* A getter, not a data pointer: R_RegisterCCallable stores a DL_FUNC. */
+  R_RegisterCCallable("zufft", "zufft_api_v1", (DL_FUNC) &zff_api_v1);
   R_forceSymbols(dll, TRUE);
 }

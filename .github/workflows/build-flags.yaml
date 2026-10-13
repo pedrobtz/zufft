@@ -44,6 +44,8 @@ jobs:
           R CMD check --as-cran --no-manual --ignore-vignettes zufft_*.tar.gz || true
       - name: no non-portable flags, clean compiled-code check
         run: ./tools/check-build-log zufft.Rcheck/00check.log
+      - name: inst/include/zufft.h compiles standalone as C99 and C++17
+        run: ./tools/check-header
       - name: exported symbols (design §12.2, informational)
         run: |
           so=$(ls zufft.Rcheck/zufft/libs/zufft.*)
