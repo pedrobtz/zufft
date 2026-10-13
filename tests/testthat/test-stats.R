@@ -3,16 +3,18 @@
 
 test_that("fft_stats() matches stats::fft() on vectors and arrays", {
   withr::local_seed(51)
-  for (n in c(2:20, 64, 97, 1000)) {
-    z <- random_complex(n)
-    expect_stats_equal(fft_stats(z), stats::fft(z))
-    expect_stats_equal(
-      fft_stats(z, inverse = TRUE),
-      stats::fft(z, inverse = TRUE)
-    )
-    x <- rnorm(n)
-    expect_stats_equal(fft_stats(x), stats::fft(x))
-  }
+  expect_fft_batch({
+    for (n in c(2:20, 64, 97, 1000)) {
+      z <- random_complex(n)
+      expect_stats_equal(fft_stats(z), stats::fft(z))
+      expect_stats_equal(
+        fft_stats(z, inverse = TRUE),
+        stats::fft(z, inverse = TRUE)
+      )
+      x <- rnorm(n)
+      expect_stats_equal(fft_stats(x), stats::fft(x))
+    }
+  })
   a <- array(rnorm(60), c(3, 4, 5))
   expect_stats_equal(fft_stats(a), stats::fft(a))
   m <- matrix(random_complex(12), 3, dimnames = list(letters[1:3], NULL))
@@ -56,16 +58,18 @@ test_that("non-numeric input fails as in stats::fft()", {
 
 test_that("mvfft_stats() matches stats::mvfft()", {
   withr::local_seed(52)
-  for (nr in c(2, 7, 16)) {
-    m <- matrix(random_complex(nr * 3), nr)
-    expect_stats_equal(mvfft_stats(m), stats::mvfft(m))
-    expect_stats_equal(
-      mvfft_stats(m, inverse = TRUE),
-      stats::mvfft(m, inverse = TRUE)
-    )
-    r <- matrix(rnorm(nr * 3), nr, dimnames = list(NULL, c("x", "y", "z")))
-    expect_stats_equal(mvfft_stats(r), stats::mvfft(r))
-  }
+  expect_fft_batch({
+    for (nr in c(2, 7, 16)) {
+      m <- matrix(random_complex(nr * 3), nr)
+      expect_stats_equal(mvfft_stats(m), stats::mvfft(m))
+      expect_stats_equal(
+        mvfft_stats(m, inverse = TRUE),
+        stats::mvfft(m, inverse = TRUE)
+      )
+      r <- matrix(rnorm(nr * 3), nr, dimnames = list(NULL, c("x", "y", "z")))
+      expect_stats_equal(mvfft_stats(r), stats::mvfft(r))
+    }
+  })
   one <- matrix(1:3, 1)
   expect_identical(mvfft_stats(one), stats::mvfft(one))
   expect_error(mvfft_stats(1:4), class = "zufft_invalid_argument")
