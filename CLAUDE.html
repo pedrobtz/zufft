@@ -148,7 +148,7 @@
 </ul></div>
 <div class="section level2">
 <h2 id="continuous-integration">Continuous integration<a class="anchor" aria-label="anchor" href="#continuous-integration"></a></h2>
-<p>Workflows come from <code>pedrobtz/r-actions</code>, pinned to <code>@v1</code>: <code>r-cmd-check.yml</code> (quick on pull requests, full on <code>main</code>, full on a pull request with the <code>full-ci</code> label), <code>coverage.yml</code>, <code>vendor.yml</code> and the pkgdown workflow. <code>build-flags.yaml</code> is local: it fails on the NOTEs r-actions lets through.</p>
+<p>Workflows come from <code>pedrobtz/r-actions</code>, pinned to <code>@v1</code>: <code>r-cmd-check.yml</code> (quick on pull requests, full on <code>main</code>, full on a pull request with the <code>full-ci</code> label), <code>coverage.yml</code>, <code>vendor.yml</code> and the pkgdown workflow. <code>build-flags.yaml</code> is local: it fails on the NOTEs r-actions lets through. The coverage badge is committed to <code>gh-pages</code> (<code>badges/coverage.svg</code>), because the <code>main</code> ruleset takes no direct pushes; the pkgdown deploy must not force-push or clean that branch.</p>
 </div>
 <div class="section level2">
 <h2 id="commits-and-pull-requests">Commits and pull requests<a class="anchor" aria-label="anchor" href="#commits-and-pull-requests"></a></h2>
