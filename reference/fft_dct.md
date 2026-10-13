@@ -84,8 +84,11 @@ fft_dst(
   Threads to use. `NULL` uses the session default (1). Negative values
   count back from the number of available cores: `-1` means all of them.
   Requests are capped at the available cores, and at 2 when
-  `_R_CHECK_LIMIT_CORES_` is set. Until the thread pool lands, every
-  transform runs on one thread whatever `workers` says.
+  `_R_CHECK_LIMIT_CORES_` is set. Threads split the independent 1-D
+  transforms of a multi-dimensional array, so they help only arrays with
+  at least 32 768 elements and more than one line. Results agree to
+  rounding whatever the number of threads; they are bit-identical on
+  builds without fused multiply-add (CRAN's x86-64 builds).
 
 ## Value
 

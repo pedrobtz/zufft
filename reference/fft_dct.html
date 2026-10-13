@@ -121,8 +121,11 @@ value is ignored and <code>norm == "ortho"</code> is used, as SciPy does.</p></d
 <dd><p>Threads to use. <code>NULL</code> uses the session default (1).
 Negative values count back from the number of available cores: <code>-1</code>
 means all of them. Requests are capped at the available cores, and at
-2 when <code>_R_CHECK_LIMIT_CORES_</code> is set. Until the thread pool lands, every
-transform runs on one thread whatever <code>workers</code> says.</p></dd>
+2 when <code>_R_CHECK_LIMIT_CORES_</code> is set. Threads split the independent
+1-D transforms of a multi-dimensional array, so they help only arrays
+with at least 32 768 elements and more than one line. Results agree to
+rounding whatever the number of threads; they are bit-identical on
+builds without fused multiply-add (CRAN's x86-64 builds).</p></dd>
 
 </dl></div>
     <div class="section level2">

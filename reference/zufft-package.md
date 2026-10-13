@@ -45,3 +45,6 @@ Other contributors:
 
 - The TensorFlow Authors (helpers in src/ducc0/infra/threading.cc)
   \[copyright holder\]
+
+- SciPy Developers (fast-length search in src/zff_lengths.cpp, from
+  SciPy) \[copyright holder\]

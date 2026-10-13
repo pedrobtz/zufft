@@ -22,6 +22,9 @@
 - **The TensorFlow Authors**. Copyright holder.  
   helpers in src/ducc0/infra/threading.cc
 
+- **SciPy Developers**. Copyright holder.  
+  fast-length search in src/zff_lengths.cpp, from SciPy
+
 ## Citation
 
 Source:

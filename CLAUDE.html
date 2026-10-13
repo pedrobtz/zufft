@@ -43,7 +43,7 @@
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Verified 2026-10-13: Stage 4. <code><a href="reference/fft_c2c.html">fft_c2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_r2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_c2r()</a></code>, <code><a href="reference/fft_dct.html">fft_dct()</a></code> and <code><a href="reference/fft_dct.html">fft_dst()</a></code> work over any axes with <code>n</code>, all four <code>norm</code> values and the condition classes of design §9; <code><a href="reference/zufft_info.html">zufft_info()</a></code> reports the build. Helpers, <code>fft_stats()</code>, the thread pool and the C table are later stages. <code>workers</code> is validated but every transform runs on one thread (placeholder pool). Benchmarks against fftwtools are in <code>bench/RESULTS.md</code>.</p>
+<p>Verified 2026-10-13: Stage 6. The whole R surface of design §5.1 exists and <code>workers</code> runs on zufft’s own thread pool (<code>src/zff_pool.cpp</code>), with fork and unload handling. The C table (Stage 7) is next. Benchmarks against fftwtools are in <code>bench/RESULTS.md</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="stage-tracking">Stage tracking<a class="anchor" aria-label="anchor" href="#stage-tracking"></a></h2>
@@ -121,6 +121,10 @@
 <h2 id="invariants-that-are-easy-to-break">Invariants that are easy to break<a class="anchor" aria-label="anchor" href="#invariants-that-are-easy-to-break"></a></h2>
 <ul><li>
 <strong>Complex memory is touched only through std::complex in C++.</strong> The zero-copy path (design §12.2) is justified on that condition. C glue may pass <code>COMPLEX(x)</code> as a pointer, crop by strides, and copy bytes with <code>memcpy</code>, but must not read or write complex elements as doubles while a shim call can see them. <code>ZFF_COMPLEX_MARSHAL</code> builds the copying fallback; CI keeps it passing.</li>
+<li>
+<strong>Every shim entry point holds the entry gate (<code>call_gate</code>) around its ducc0 calls.</strong> It serialises top-level transforms and grows the pool; ducc0’s plan cache and the fork handlers rely on it.</li>
+<li>
+<strong>Never unregister or bypass the fork handlers.</strong> <code>zff_pool.cpp</code> pins the shared object with <code>RTLD_NODELETE</code> because <code>pthread_atfork</code> handlers outlive an unload (<code>devtools::load_all()</code> reloads).</li>
 <li>
 <strong>Nothing in the shim or on a pool thread calls R.</strong> Errors cross as a status code and a thread-local message; <code>zff_raise()</code> in the C glue turns them into classed R conditions.</li>
 </ul></div>

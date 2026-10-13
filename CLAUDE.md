@@ -24,19 +24,10 @@ is the stage plan with exit criteria.
 
 ## Current state
 
-Verified 2026-10-13: Stage 4.
-[`fft_c2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md),
-[`fft_r2c()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md),
-[`fft_c2r()`](https://pedrobtz.github.io/zufft/reference/fft_c2c.md),
-[`fft_dct()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md) and
-[`fft_dst()`](https://pedrobtz.github.io/zufft/reference/fft_dct.md)
-work over any axes with `n`, all four `norm` values and the condition
-classes of design §9;
-[`zufft_info()`](https://pedrobtz.github.io/zufft/reference/zufft_info.md)
-reports the build. Helpers, `fft_stats()`, the thread pool and the C
-table are later stages. `workers` is validated but every transform runs
-on one thread (placeholder pool). Benchmarks against fftwtools are in
-`bench/RESULTS.md`.
+Verified 2026-10-13: Stage 6. The whole R surface of design §5.1 exists
+and `workers` runs on zufft’s own thread pool (`src/zff_pool.cpp`), with
+fork and unload handling. The C table (Stage 7) is next. Benchmarks
+against fftwtools are in `bench/RESULTS.md`.
 
 ## Stage tracking
 
@@ -152,6 +143,12 @@ and a `NEWS.md` entry.
   with `memcpy`, but must not read or write complex elements as doubles
   while a shim call can see them. `ZFF_COMPLEX_MARSHAL` builds the
   copying fallback; CI keeps it passing.
+- **Every shim entry point holds the entry gate (`call_gate`) around its
+  ducc0 calls.** It serialises top-level transforms and grows the pool;
+  ducc0’s plan cache and the fork handlers rely on it.
+- **Never unregister or bypass the fork handlers.** `zff_pool.cpp` pins
+  the shared object with `RTLD_NODELETE` because `pthread_atfork`
+  handlers outlive an unload (`devtools::load_all()` reloads).
 - **Nothing in the shim or on a pool thread calls R.** Errors cross as a
   status code and a thread-local message; `zff_raise()` in the C glue
   turns them into classed R conditions.
