@@ -121,11 +121,3 @@ local_fft_workers <- function(n, .local_envir = parent.frame()) {
   do.call(base::on.exit, list(restore, TRUE, FALSE), envir = .local_envir)
   invisible(old)
 }
-
-# Joins the thread pool's workers now; the pool restarts on the next
-# threaded call. Internal: forked children (parallel::mclapply) leave with
-# _exit(), which runs no exit handler, so tests call this to finish them
-# cleanly under valgrind.
-zff_release_threads <- function() {
-  invisible(.Call(zff_release_call))
-}

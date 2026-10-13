@@ -545,8 +545,12 @@ the output, not `NA_real_`. `stats::fft()` behaves the same way
   pinning) joins the workers, so no thread outlives the process's
   teardown; valgrind on pedrobtz/zufft#21 flagged both, the abandoned pool
   as "definitely lost" and running threads as "possibly lost". Forked
-  children leave by `_exit()`, which runs no handler, so the fork test
-  joins their workers through an internal `zff_release_threads()`.
+  children leave by `_exit()`, which skips static destructors and exit
+  handlers, so valgrind also reports memory in them that only the parent's
+  vanished worker stacks, or ducc0's plan cache through the interior
+  pointers of its aligned buffers, refer to. Those are artefacts of the
+  fork, not leaks, and the fork test skips under valgrind (detected by its
+  `LD_PRELOAD`); the other legs, sanitizers included, run it.
 - A transform is not interruptible. Pool threads never call R.
 
 ## 7. The C table and the `LinkingTo` header

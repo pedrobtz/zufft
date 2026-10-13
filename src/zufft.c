@@ -79,12 +79,6 @@ static SEXP zff_set_workers(SEXP n) {
   return R_NilValue;
 }
 
-/* Joins the pool's workers now (tests: forked children leave by _exit). */
-static SEXP zff_release(void) {
-  zff_pool_shutdown();
-  return R_NilValue;
-}
-
 static const R_CallMethodDef call_methods[] = {
   {"zff_info", (DL_FUNC) &zff_info, 0},
   {"zff_scratch_c2c_call", (DL_FUNC) &zff_scratch_c2c, 2},
@@ -93,7 +87,6 @@ static const R_CallMethodDef call_methods[] = {
   {"zff_r2r_call", (DL_FUNC) &zff_r2r, 9},
   {"zff_lengths_call", (DL_FUNC) &zff_lengths, 3},
   {"zff_set_workers_call", (DL_FUNC) &zff_set_workers, 1},
-  {"zff_release_call", (DL_FUNC) &zff_release, 0},
   {NULL, NULL, 0}
 };
 
