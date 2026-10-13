@@ -17,8 +17,10 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 ## Overview
 
-zufft provides fast Fourier transforms (FFTs), along with discrete cosine
-and sine transforms (DCTs and DSTs):
+zufft wraps [ducc0](https://github.com/mreineck/ducc), the C++ FFT library
+that SciPy also uses. ducc0 comes bundled with zufft, so there's nothing else
+to install. zufft provides fast Fourier transforms (FFTs), along with
+discrete cosine and sine transforms (DCTs and DSTs):
 
 | zufft | stats | fftwtools | Computes |
 | --- | --- | --- | --- |
@@ -37,10 +39,6 @@ The conventions for axes, normalisation and the DCT and DST definitions
 follow `scipy.fft`. Helpers such as `fft_next_len()`, `fft_freq()` and
 `fft_shift()` mirror SciPy's `next_fast_len()`, `fftfreq()` and
 `fftshift()`.
-
-Under the hood, zufft uses [ducc0](https://github.com/mreineck/ducc), the
-C++ FFT library that SciPy also uses. ducc0 comes bundled with zufft, so
-there's nothing else to install.
 
 ## Installation
 
