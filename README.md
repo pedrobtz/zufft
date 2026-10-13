@@ -25,7 +25,13 @@ library and carries no GPL code.
 
 ## Installation
 
-You can install the development version of zufft from
+Install zufft from CRAN with:
+
+``` r
+install.packages("zufft")
+```
+
+or the development version from
 [GitHub](https://github.com/pedrobtz/zufft) with:
 
 ``` r

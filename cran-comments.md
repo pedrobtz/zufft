@@ -28,3 +28,10 @@ All through the R CMD check workflows of pedrobtz/r-actions, run with
   reports.
 * The package uses at most two threads when _R_CHECK_LIMIT_CORES_ is set,
   and one by default.
+
+## Method references
+
+There is no single published reference for the code in this package. The
+bundled 'ducc0' FFT is an evolution of 'pocketfft', whose algorithms derive
+from Paul Swarztrauber's FFTPACK; 'ducc0' itself is documented at
+<https://github.com/mreineck/ducc>.
