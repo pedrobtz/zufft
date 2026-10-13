@@ -31,8 +31,14 @@ carries no GPL code.
 
 ## Installation
 
-You can install the development version of zufft from
-[GitHub](https://github.com/pedrobtz/zufft) with:
+Install zufft from CRAN with:
+
+``` r
+install.packages("zufft")
+```
+
+or the development version from [GitHub](https://github.com/pedrobtz/zufft)
+with:
 
 ``` r
 # install.packages("pak")
