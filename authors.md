@@ -28,7 +28,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pedrobtz/zufft/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pedrobtz/zufft/blob/0.1.0/DESCRIPTION)
 
 Baltazar P (2026). *zufft: Fast Fourier, Cosine and Sine Transforms*. R
 package version 0.1.0, <https://github.com/pedrobtz/zufft>.
