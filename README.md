@@ -5,6 +5,8 @@
 
 <!-- badges: start -->
 
+[![CRAN
+status](https://www.r-pkg.org/badges/version/zufft)](https://CRAN.R-project.org/package=zufft)
 [![R-CMD-check](https://github.com/pedrobtz/zufft/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedrobtz/zufft/actions/workflows/R-CMD-check.yaml)
 [![coverage](https://raw.githubusercontent.com/pedrobtz/zufft/gh-pages/badges/coverage.svg)](https://github.com/pedrobtz/zufft/actions/workflows/coverage.yaml)
 <!-- badges: end -->
