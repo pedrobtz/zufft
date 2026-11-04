@@ -28,15 +28,15 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pedrobtz/zufft/blob/0.1.0/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pedrobtz/zufft/blob/main/DESCRIPTION)
 
 Baltazar P (2026). *zufft: Fast Fourier, Cosine and Sine Transforms*. R
-package version 0.1.0, <https://github.com/pedrobtz/zufft>.
+package version 0.1.0.9000, <https://github.com/pedrobtz/zufft>.
 
     @Manual{,
       title = {zufft: Fast Fourier, Cosine and Sine Transforms},
       author = {Pedro Baltazar},
       year = {2026},
-      note = {R package version 0.1.0},
+      note = {R package version 0.1.0.9000},
       url = {https://github.com/pedrobtz/zufft},
     }

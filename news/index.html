@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">zufft</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,14 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pedrobtz/zufft/blob/0.1.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pedrobtz/zufft/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.0" id="zufft-010">zufft 0.1.0<a class="anchor" aria-label="anchor" href="#zufft-010"></a></h2>
+<h2 class="pkg-version" data-toc-text="development version" id="zufft-development-version">zufft (development version)<a class="anchor" aria-label="anchor" href="#zufft-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.0" id="zufft-010">zufft 0.1.0<a class="anchor" aria-label="anchor" href="#zufft-010"></a></h2><p class="text-muted">CRAN release: 2026-10-22</p>
 <p>First release.</p>
 <ul><li>
 <code><a href="../reference/fft_c2c.html">fft_c2c()</a></code>, <code><a href="../reference/fft_c2c.html">fft_r2c()</a></code> and <code><a href="../reference/fft_c2c.html">fft_c2r()</a></code> compute complex, real-to-complex and complex-to-real discrete Fourier transforms over any axes of an array, with SciPy’s crop-or-pad <code>n</code> and <code>norm = "backward"</code>, <code>"ortho"</code>, <code>"forward"</code> or <code>"none"</code> (the unnormalised convention of fftwtools and <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code>).</li>
@@ -60,7 +63,8 @@
 <li>
 <code><a href="../reference/zufft_info.html">zufft_info()</a></code> reports the vendored ducc0 and SciPy commits, the SIMD backend and width, fused multiply-add support, the threading mode and the complex path.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

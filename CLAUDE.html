@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">zufft</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,7 +34,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>CLAUDE.md</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pedrobtz/zufft/blob/0.1.0/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedrobtz/zufft/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
 <div id="claudemd" class="section level1">
@@ -42,85 +42,43 @@
 <!-- markdownlint-disable-next-line MD013 -->
 <p>This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.</p>
 <div class="section level2">
+<h2 id="shared-conventions">Shared conventions<a class="anchor" aria-label="anchor" href="#shared-conventions"></a></h2>
+<p>The portfolio’s shared rules are synced into <code>.claude/shared/</code> from <code>pedrobtz/packages:claude/shared/</code>. Never edit them here. Where this file and a shared file disagree, this file wins for zufft.</p>
+<p>@.claude/shared/workflow.md @.claude/shared/r-package.md @.claude/shared/ci.md @.claude/shared/native-code.md</p>
+</div>
+<div class="section level2">
 <h2 id="what-this-is">What this is<a class="anchor" aria-label="anchor" href="#what-this-is"></a></h2>
 <p>zufft is an R package for fast Fourier, cosine and sine transforms. It is meant to replace <code>fftwtools</code> without FFTW: it bundles the BSD-licensed FFT subset of ducc0, the same files and commit SciPy vendors, so it needs no system library and carries no GPL code. The R API follows <code>scipy.fft</code> conventions (axes, <code>norm</code>, transform types) with names a fftwtools user recognises (<code><a href="reference/fft_c2c.html">fft_c2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_r2c()</a></code>, <code><a href="reference/fft_c2c.html">fft_c2r()</a></code>). It is also a provider: a registered C table lets other packages, first <code>zutsne</code>, call the transforms from C. Zero hard runtime dependencies.</p>
 <p><a href=".agents/design.html">.agents/design.md</a> is the specification and outranks this file. <a href=".agents/roadmap.html">.agents/roadmap.md</a> is the stage plan with exit criteria.</p>
 </div>
 <div class="section level2">
 <h2 id="current-state">Current state<a class="anchor" aria-label="anchor" href="#current-state"></a></h2>
-<p>Verified 2026-10-13: version 0.1.0, ready for CRAN submission. Every stage of the roadmap is merged; <code>cran-comments.md</code> lists the CI legs. What remains is the submission itself, tracked in <a href="https://github.com/pedrobtz/zufft/issues/14" class="external-link">CRAN-submission (#14)</a>. Design questions 9 and 10 are decided: the real transforms halve the first dimension by default, and fused multiply-add contraction is off so results do not depend on <code>workers</code>. Benchmarks against fftwtools are in <code>bench/RESULTS.md</code>.</p>
+<p>Verified 2026-11-04: 0.1.0 is on CRAN, published 2026-10-22 and tagged <code>0.1.0</code>; <code>main</code> is <code>0.1.0.9000</code>. The next version is tracked in <a href="https://github.com/pedrobtz/zufft/issues/37" class="external-link">v0.1.1 (#37)</a>. Design questions 9 and 10 are decided: the real transforms halve the first dimension by default, and fused multiply-add contraction is off so results do not depend on <code>workers</code>. Benchmarks against fftwtools are in <code>bench/RESULTS.md</code>.</p>
 </div>
 <div class="section level2">
-<h2 id="stage-tracking">Stage tracking<a class="anchor" aria-label="anchor" href="#stage-tracking"></a></h2>
-<p>Progress toward the next version is tracked as GitHub sub-issues, so the parent issue shows a progress bar such as “6 of 7”.</p>
-<ul><li>
-<strong>One parent issue per target version</strong>, titled with the bare version: <a href="https://github.com/pedrobtz/zufft/issues/2" class="external-link">v0.1.0 (#2)</a>.</li>
-<li>
-<strong>One sub-issue per roadmap stage</strong>, titled as the roadmap titles it, for example <code>Stage 3 — Fourier transforms</code>, and linking to that section.</li>
-<li>
-<strong>Every tracking issue carries the <code>stage</code> label</strong>, so it can be told apart from bug and feature issues and left out of open-issue counts.</li>
-<li>
-<strong>Close a stage by merging its pull request.</strong> Put <code>Closes #&lt;n&gt;</code> in the body of the stage’s pull request. Never close a stage whose exit criteria are not met; record a deviation in the roadmap first.</li>
-<li>
-<strong>The roadmap stays authoritative.</strong> The issues record which stages are done, not what a stage requires. Adding, removing or renaming a stage means editing the roadmap and the sub-issues in the same change.</li>
-<li>Close the parent issue when CRAN accepts the version and it is tagged. Submission is tracked in <a href="https://github.com/pedrobtz/zufft/issues/14" class="external-link">CRAN-submission (#14)</a>.</li>
-</ul></div>
-<div class="section level2">
-<h2 id="versioning">Versioning<a class="anchor" aria-label="anchor" href="#versioning"></a></h2>
-<p>The package develops at <code>0.0.0.9000</code> and targets <code>0.1.0</code> for its first CRAN release. Set <code>Version: 0.1.0</code> and the matching <code>NEWS.md</code> heading when the package enters <code>Pre-flight</code>. Bump to <code>0.1.0.9000</code> only after CRAN accepts it.</p>
-<p>Until the first release the R API may change freely. The C table in <code>inst/include/zufft.h</code> is different: <code>zutsne</code> will consume it, and a layout change breaks it even before 0.1.0, so the table follows the append-only rules of design §7.</p>
+<h2 id="versions-and-dependents">Versions and dependents<a class="anchor" aria-label="anchor" href="#versions-and-dependents"></a></h2>
+<p>The C table in <code>inst/include/zufft.h</code> is consumed by <code>zutsne</code>, and a layout change breaks it even before a release, so the table follows the append-only rules of design §7.</p>
+<p>zufft has no <code>cran-release.yaml</code> yet, so <code>CRAN-SUBMISSION</code> is still git-ignored and a release is tagged by hand with <code>pkg-post-cran</code>, not as <code>.claude/shared/workflow.md</code> describes.</p>
 </div>
 <div class="section level2">
 <h2 id="commands">Commands<a class="anchor" aria-label="anchor" href="#commands"></a></h2>
-<p>Run from the package root.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::load_all()'</span>                <span class="co"># compile src/ and load</span></span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::document()'</span>                <span class="co"># roxygen -&gt; NAMESPACE, man/</span></span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::test()'</span>                    <span class="co"># full testthat suite</span></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::test(filter = "&lt;name&gt;")'</span>   <span class="co"># one test file</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::test(shuffle = TRUE)'</span>      <span class="co"># order independence</span></span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::check()'</span>                   <span class="co"># R CMD check</span></span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::build_readme()'</span>            <span class="co"># README.Rmd -&gt; README.md</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="ex">air</span> format .                                     <span class="co"># format R sources</span></span>
-<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="ex">tools/vendor/verify</span>                              <span class="co"># vendored tree vs manifest</span></span>
-<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="ex">tools/run-benchmarks</span> <span class="at">--quick</span>                     <span class="co"># design §11 grid, short</span></span></code></pre></div>
+<p>Beyond the shared <code>devtools</code> commands:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::build_readme()'</span>            <span class="co"># README.Rmd -&gt; README.md</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="ex">tools/vendor/verify</span>                              <span class="co"># vendored tree vs manifest</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="ex">tools/run-benchmarks</span> <span class="at">--quick</span>                     <span class="co"># design §11 grid, short</span></span></code></pre></div>
 <p><code>tools/run-benchmarks</code> needs zufft installed, plus <code>bench</code> and, for the comparison, <code>fftwtools</code> (system FFTW). The <code>benchmark</code> label on a pull request runs the full grid on a Linux runner.</p>
 </div>
 <div class="section level2">
-<h2 id="testing-conventions">Testing conventions<a class="anchor" aria-label="anchor" href="#testing-conventions"></a></h2>
-<ul><li>
-<strong>Self-sufficient.</strong> Every test builds its own inputs inside the <code>test_that()</code> block. No file-scope objects.</li>
-<li>
-<strong>Self-contained.</strong> Global state goes through <code>withr::local_*()</code>, randomised input through <code><a href="https://withr.r-lib.org/reference/with_seed.html" class="external-link">withr::local_seed()</a></code>. Tests write only under <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>.</li>
-<li>
-<strong>Assert on condition classes, never message text.</strong> Use <code>expect_error(..., class = "zufft_invalid_argument")</code> and the other classes of design §9.</li>
-<li>
-<strong>Order independence.</strong> <code>devtools::test(shuffle = TRUE)</code> is part of the definition of done.</li>
+<h2 id="testing">Testing<a class="anchor" aria-label="anchor" href="#testing"></a></h2>
+<ul><li>Condition classes are those of design §9, for example <code>expect_error(..., class = "zufft_invalid_argument")</code>.</li>
 <li>
 <strong>Oracles before hand-written cases.</strong> <code>scipy.fft</code> fixtures, <code>fftwtools</code> (in <code>Suggests</code>, skipped when absent), <code><a href="https://rdrr.io/r/stats/fft.html" class="external-link">stats::fft()</a></code> and a direct O(n²) DFT (design §10).</li>
-<li>
-<strong>Keep the suite inside the CRAN time budget</strong> of 15 s.</li>
-</ul></div>
-<div class="section level2">
-<h2 id="definition-of-done">Definition of done<a class="anchor" aria-label="anchor" href="#definition-of-done"></a></h2>
-<p><code>devtools::document()</code> and <code>devtools::check()</code> clean, meaning 0 errors, 0 warnings and 0 notes. The one allowed note is “New submission” before the first release. <code>devtools::test(shuffle = TRUE)</code> green. CI green on every leg. A user-facing change also needs a test, roxygen documentation and a <code>NEWS.md</code> entry.</p>
-</div>
-<div class="section level2">
-<h2 id="releasing-to-cran">Releasing to CRAN<a class="anchor" aria-label="anchor" href="#releasing-to-cran"></a></h2>
-<ul><li>
-<strong>CI is the pre-submission check.</strong> The <code>pedrobtz/r-actions</code> R CMD check runs <code>--as-cran</code> on the CRAN-like runners and containers, and it replaces win-builder, the macOS builder and R-hub. <code>cran-comments.md</code> lists the CI legs as its test environments.</li>
-<li>
-<strong>The pretest is automated and does not read <code>cran-comments.md</code>.</strong> Fix a NOTE instead of justifying it.</li>
-<li>
-<strong>After acceptance,</strong> tag <code>0.1.0</code>, publish the GitHub release, bump to <code>0.1.0.9000</code>, and close the version’s parent issue.</li>
+<li>The CRAN time budget for the suite is 15 s.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="editing-rules">Editing rules<a class="anchor" aria-label="anchor" href="#editing-rules"></a></h2>
-<ul><li>roxygen comments are the source. Never edit <code>man/</code> or <code>NAMESPACE</code> by hand.</li>
-<li>Edit <code>README.Rmd</code>, not the generated <code>README.md</code>.</li>
-<li>Keep prose simple and short. One idea per sentence. en-GB spelling.</li>
-<li>Wrap roxygen text at 80 characters and run <code>air format .</code> on R sources.</li>
-<li>Use <code>lower_snake_case</code>; internal native symbols use the <code>zff_</code> prefix, the public C API the <code>zufft_</code> prefix.</li>
-<li>Keep hard runtime dependencies at zero.</li>
+<ul><li>en-GB spelling.</li>
+<li>Internal native symbols use the <code>zff_</code> prefix, the public C API the <code>zufft_</code> prefix.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="invariants-that-are-easy-to-break">Invariants that are easy to break<a class="anchor" aria-label="anchor" href="#invariants-that-are-easy-to-break"></a></h2>
@@ -151,10 +109,6 @@
 <div class="section level2">
 <h2 id="continuous-integration">Continuous integration<a class="anchor" aria-label="anchor" href="#continuous-integration"></a></h2>
 <p>Workflows come from <code>pedrobtz/r-actions</code>, pinned to <code>@v1</code>: <code>r-cmd-check.yml</code> (quick on pull requests, full on <code>main</code>, full on a pull request with the <code>full-ci</code> label), <code>coverage.yml</code>, <code>vendor.yml</code> and the pkgdown workflow. <code>build-flags.yaml</code> is local: it fails on the NOTEs r-actions lets through. The coverage badge is committed to <code>gh-pages</code> (<code>badges/coverage.svg</code>), because the <code>main</code> ruleset takes no direct pushes; the pkgdown deploy must not force-push or clean that branch.</p>
-</div>
-<div class="section level2">
-<h2 id="commits-and-pull-requests">Commits and pull requests<a class="anchor" aria-label="anchor" href="#commits-and-pull-requests"></a></h2>
-<p>Short, imperative, sentence-case commit subjects. Keep each commit focused. A pull request explains the user-visible outcome and the rationale, links related issues, lists the checks that were run and the tests that were skipped, and flags platform-sensitive or vendored changes. Performance claims need evidence.</p>
 </div>
 </div>
 
