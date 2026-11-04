@@ -14,3 +14,4 @@
 ^tests/testthat/fixtures/.*/src/.*\.(o|so|dll)$
 ^tools$
 ^vignettes/articles$
+^\.claude$
