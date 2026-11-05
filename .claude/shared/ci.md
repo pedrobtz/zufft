@@ -8,7 +8,10 @@ of writing bespoke ones, and pin a released tag rather than `main`. Pin a
 workflow that holds a write token, such as `coverage.yml` or
 `cran-release.yml`, to a commit, with the tag in a comment. The `R-CMD-check`
 workflow must call `r-cmd-check.yml`, because a hand-rolled one does not count
-as the pre-submission check. The package's `CLAUDE.md` lists the shared
+as the pre-submission check. Copy the callers from r-actions' `examples/`:
+they pass `profile: auto` and carry `workflow_dispatch:` and a weekly
+`schedule:`, the only events besides a `full-ci` pull request that run the
+full set. The package's `CLAUDE.md` lists the shared
 workflows it calls and any of its own.
 
 ## What a change runs
@@ -42,7 +45,8 @@ A label on a pull request can ask for more checking, or for less:
 | `skip-ci:<workflow>` | that workflow's jobs skipped, for example `skip-ci:fuzz` or `skip-ci:valgrind` |
 
 Labels change pull request runs only. The push to the default branch after
-merge carries none, so whatever a label skipped still runs there. Apply a
+merge carries none, so whatever a label skipped still runs there, at the
+quick profile. Apply a
 label at creation (`gh pr create --label ci:minimal`) for it to count from the
 first run; one added later starts a new run. Use `ci:minimal` or a `skip-ci`
 label for a change the checks cannot see, such as CI configuration or
@@ -54,19 +58,25 @@ The full profile is slow. gctorture at step 20 alone has taken 36 to 107
 minutes on sibling packages. Waiting on it between roadmap stages was the
 main thing slowing roadmaps down, so:
 
-- **Pull requests run the quick profile** (`profile: auto` in the callers).
-  It should finish in under five minutes. If it doesn't, raise gctorture's
+- **Pull requests and pushes to the default branch run the quick profile**
+  (`profile: auto` in the callers). A merge never starts the full set. It
+  should finish in under five minutes. If it doesn't, raise gctorture's
   `quick-step` or trim `quick-containers` in the caller workflows; never cut
   the full profile.
 - **A `full` roadmap stage takes the `full-ci` label** and merges only on a
   green full run. The roadmap gives the reason in the stage's `**CI.**`
   line, for example first compiled code, a `PROTECT` or finalizer change, a
   vendored library, or a Windows-only path.
-- **Don't wait on the full run a merge starts** on the default branch, and
-  cancel older full runs it supersedes. A failure that only the full set
-  shows goes on the `Full CI` stage issue as a comment with the run link,
-  and is fixed there. A failure the quick profile also shows is fixed now.
-- **`Full CI` and `v0.1.0 readiness` wait** for a green full run on their
-  merge commit, and the release commit always needs one.
+- **The full set runs on demand and weekly.** Dispatch it on the default
+  branch with `gh workflow run R-CMD-check.yml --ref main` and
+  `gh workflow run native-checks.yml --ref main` (the callers' file names),
+  and the callers' weekly `schedule:` runs it anyway. Don't dispatch it after
+  every merge: run it once at the end of a series of merges, on the last
+  merge commit.
+- **A failure only the full set shows** goes on the `Full CI` stage issue as
+  a comment with the run link, and is fixed there. A failure the quick
+  profile also shows is fixed now.
+- **`Full CI` and `v0.1.0 readiness` wait** for a green dispatched full run
+  on their merge commit, and the release commit always needs one.
 - Locally, run `gctorture(TRUE)` on the code a C change touches when it is
   cheap; the full run is the authority.
