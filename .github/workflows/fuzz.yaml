@@ -6,7 +6,7 @@ on:
     paths-ignore: ['**.md', '.agents/**', '_pkgdown.yml', 'docs/**']
   schedule:
     # A long run weekly; the corpus cache joins it to the short PR runs.
-    - cron: "0 4 * * 1"
+    - cron: "5 1 * * 0"
 
 name: fuzz
 
