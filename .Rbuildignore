@@ -15,3 +15,6 @@
 ^tools$
 ^vignettes/articles$
 ^\.claude$
+^\.superpowers$
+^\.worktrees$
+^AGENTS\.md$

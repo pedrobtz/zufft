@@ -13,6 +13,8 @@ a shared file disagree, this file wins for zufft.
 @.claude/shared/r-package.md
 @.claude/shared/ci.md
 @.claude/shared/native-code.md
+@.claude/shared/correctness.md
+@.claude/shared/assurance.md
 
 ## What this is
 
@@ -114,25 +116,28 @@ in.
 - `tools/vendor/verify` is the offline check CI runs; never edit a file in
   `src/ducc0/`. Changes to vendored files go in `tools/vendor/patches/`,
   each with its reason; there are two, for clang `-pedantic` (CRAN's
-  debian-clang flavor) and for a UBSan finding in the DCT/DST plans. zufft's adaptations live beside it: the custom threading
-  header, the `.cc` wrappers and the instantiation units.
+  debian-clang flavor) and for a UBSan finding in the DCT/DST plans.
+  zufft's adaptations live beside it: the custom threading header, the `.cc`
+  wrappers and the instantiation units.
 - **`$(ZUFFT_CXXFLAGS)` in `PKG_CXXFLAGS` is the opt-in native-build hook.**
   It must stay empty by default (never give it a value in `Makevars`), so
   CRAN sees only R's flags; the `portability` workflow's native job builds
   with it set.
 - **No `-f`, `-m` or `-O` flag in `Makevars`.** R CMD check warns about them
   ("checking compilation flags in Makevars"). Fused multiply-add contraction
-  is switched off by `src/zff_fp_contract.h`, included first in each instantiation
-  unit. `tools/check-build-log` fails CI on non-portable flags and on any
-  compiled-code NOTE (abort, exit, stdio).
+  is switched off by `src/zff_fp_contract.h`, included first in each
+  instantiation unit. `tools/check-build-log` fails CI on non-portable flags
+  and on any compiled-code NOTE (abort, exit, stdio).
 - Every holder named in the bundled files is in `Authors@R` and
   `inst/COPYRIGHTS`; a re-vendor must re-check that list.
 
 ## Continuous integration
 
 Workflows come from `pedrobtz/r-actions`, pinned to `@v1`: `r-cmd-check.yml`
-(quick on pull requests, full on `main`, full on a pull request with the
-`full-ci` label), `coverage.yml`, `vendor.yml` and the pkgdown workflow.
+(quick on pull requests, full on a pull request with the `full-ci` label,
+and full on every push to `main`, a deviation from `.claude/shared/ci.md`,
+whose callers run quick there), `coverage.yml`, `vendor.yml` and the pkgdown
+workflow.
 `build-flags.yaml` is local: it fails on the NOTEs r-actions lets through.
 The coverage badge is committed to `gh-pages` (`badges/coverage.svg`), because
 the `main` ruleset takes no direct pushes; the pkgdown deploy must not
