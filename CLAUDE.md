@@ -11,6 +11,7 @@ file and a shared file disagree, this file wins for zufft.
 
 @.claude/shared/workflow.md @.claude/shared/r-package.md
 @.claude/shared/ci.md @.claude/shared/native-code.md
+@.claude/shared/correctness.md @.claude/shared/assurance.md
 
 ## What this is
 
@@ -136,9 +137,11 @@ never copy anything else in.
 ## Continuous integration
 
 Workflows come from `pedrobtz/r-actions`, pinned to `@v1`:
-`r-cmd-check.yml` (quick on pull requests, full on `main`, full on a
-pull request with the `full-ci` label), `coverage.yml`, `vendor.yml` and
-the pkgdown workflow. `build-flags.yaml` is local: it fails on the NOTEs
-r-actions lets through. The coverage badge is committed to `gh-pages`
-(`badges/coverage.svg`), because the `main` ruleset takes no direct
-pushes; the pkgdown deploy must not force-push or clean that branch.
+`r-cmd-check.yml` (quick on pull requests, full on a pull request with
+the `full-ci` label, and full on every push to `main`, a deviation from
+`.claude/shared/ci.md`, whose callers run quick there), `coverage.yml`,
+`vendor.yml` and the pkgdown workflow. `build-flags.yaml` is local: it
+fails on the NOTEs r-actions lets through. The coverage badge is
+committed to `gh-pages` (`badges/coverage.svg`), because the `main`
+ruleset takes no direct pushes; the pkgdown deploy must not force-push
+or clean that branch.

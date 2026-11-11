@@ -44,7 +44,7 @@
 <div class="section level2">
 <h2 id="shared-conventions">Shared conventions<a class="anchor" aria-label="anchor" href="#shared-conventions"></a></h2>
 <p>The portfolio’s shared rules are synced into <code>.claude/shared/</code> from <code>pedrobtz/packages:claude/shared/</code>. Never edit them here. Where this file and a shared file disagree, this file wins for zufft.</p>
-<p>@.claude/shared/workflow.md @.claude/shared/r-package.md @.claude/shared/ci.md @.claude/shared/native-code.md</p>
+<p>@.claude/shared/workflow.md @.claude/shared/r-package.md @.claude/shared/ci.md @.claude/shared/native-code.md @.claude/shared/correctness.md @.claude/shared/assurance.md</p>
 </div>
 <div class="section level2">
 <h2 id="what-this-is">What this is<a class="anchor" aria-label="anchor" href="#what-this-is"></a></h2>
@@ -108,7 +108,7 @@
 </ul></div>
 <div class="section level2">
 <h2 id="continuous-integration">Continuous integration<a class="anchor" aria-label="anchor" href="#continuous-integration"></a></h2>
-<p>Workflows come from <code>pedrobtz/r-actions</code>, pinned to <code>@v1</code>: <code>r-cmd-check.yml</code> (quick on pull requests, full on <code>main</code>, full on a pull request with the <code>full-ci</code> label), <code>coverage.yml</code>, <code>vendor.yml</code> and the pkgdown workflow. <code>build-flags.yaml</code> is local: it fails on the NOTEs r-actions lets through. The coverage badge is committed to <code>gh-pages</code> (<code>badges/coverage.svg</code>), because the <code>main</code> ruleset takes no direct pushes; the pkgdown deploy must not force-push or clean that branch.</p>
+<p>Workflows come from <code>pedrobtz/r-actions</code>, pinned to <code>@v1</code>: <code>r-cmd-check.yml</code> (quick on pull requests, full on a pull request with the <code>full-ci</code> label, and full on every push to <code>main</code>, a deviation from <code>.claude/shared/ci.md</code>, whose callers run quick there), <code>coverage.yml</code>, <code>vendor.yml</code> and the pkgdown workflow. <code>build-flags.yaml</code> is local: it fails on the NOTEs r-actions lets through. The coverage badge is committed to <code>gh-pages</code> (<code>badges/coverage.svg</code>), because the <code>main</code> ruleset takes no direct pushes; the pkgdown deploy must not force-push or clean that branch.</p>
 </div>
 </div>
 
