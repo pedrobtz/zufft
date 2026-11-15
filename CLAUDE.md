@@ -5,16 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Shared conventions
 
-The portfolio's shared rules are synced into `.claude/shared/` from
-`pedrobtz/packages:claude/shared/`. Never edit them here. Where this file and
-a shared file disagree, this file wins for zufft.
+<!-- r-skills: shared-rules -->
 
-@.claude/shared/workflow.md
-@.claude/shared/r-package.md
-@.claude/shared/ci.md
-@.claude/shared/native-code.md
-@.claude/shared/correctness.md
-@.claude/shared/assurance.md
+The portfolio's shared rules (`workflow`, `r-package`, `ci`, `native-code`,
+`correctness`, `assurance`) come from the
+[r-skills](https://github.com/pedrobtz/r-skills) plugin's `rules/`, loaded at
+session start because of the marker above. Never copy them here. Where this
+file and a shared rule disagree, this file wins for this package. Cloud
+sessions do not load the plugin and run without them.
 
 ## What this is
 
@@ -49,7 +47,7 @@ rules of design §7.
 
 zufft has no `cran-release.yaml` yet, so `CRAN-SUBMISSION` is still
 git-ignored and a release is tagged by hand with `pkg-post-cran`, not as
-`.claude/shared/workflow.md` describes.
+the shared `workflow.md` rules describes.
 
 ## Commands
 
@@ -135,7 +133,7 @@ in.
 
 Workflows come from `pedrobtz/r-actions`, pinned to `@v1`: `r-cmd-check.yml`
 (quick on pull requests, full on a pull request with the `full-ci` label,
-and full on every push to `main`, a deviation from `.claude/shared/ci.md`,
+and full on every push to `main`, a deviation from the shared `ci.md` rules,
 whose callers run quick there), `coverage.yml`, `vendor.yml` and the pkgdown
 workflow.
 `build-flags.yaml` is local: it fails on the NOTEs r-actions lets through.
