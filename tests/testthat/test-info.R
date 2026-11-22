@@ -28,10 +28,13 @@ test_that("zufft_info() reports the vendored source and the build", {
   expect_gte(info$hardware_threads, 1)
 })
 
-test_that("SSE2 and NEON builds use two-double vectors", {
-  # CRAN's default flags select SSE2 on x86-64 and NEON on arm64 (design
-  # §12.2); wider vectors appear only with user flags such as -march=native.
+test_that("the SIMD width is the one the compiler targets by default", {
+  # ducc0 picks its vector width from the target macros (simd.h): 8 doubles
+  # with AVX-512F, 4 with AVX, 2 with SSE2 or NEON. CRAN's default flags
+  # select SSE2 on x86-64 and NEON on arm64 (design §12.2), but a toolchain
+  # may target more by default: Ubuntu 26.04's amd64v3 builds give AVX2
+  # (#55). Ask R's C++17 compiler which macros it defines, with R's flags.
   skip_if_not(R.version$arch %in% c("x86_64", "aarch64", "arm64"))
   skip_if(nzchar(Sys.getenv("ZUFFT_NATIVE_BUILD")))
-  expect_identical(zufft_info()$simd_width, 2L)
+  expect_identical(zufft_info()$simd_width, default_simd_width())
 })
