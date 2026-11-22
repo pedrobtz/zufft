@@ -64,5 +64,5 @@ A named list:
 
 ``` r
 zufft_info()$simd_width
-#> [1] 2
+#> [1] 4
 ```
